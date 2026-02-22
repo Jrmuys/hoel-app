@@ -1,0 +1,19 @@
+# Node / frontend
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
+frontend/.env
+frontend/.env.*
+
+# Go / backend
+backend/bin/
+backend/.env
+backend/.env.*
+backend/hoel.db
+backend/hoel.db-*
+
+# General
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
