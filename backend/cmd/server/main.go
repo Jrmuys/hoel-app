@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"hoel-app/backend/internal/config"
+	"hoel-app/backend/internal/db"
 	"hoel-app/backend/internal/server"
 )
 
@@ -18,6 +19,20 @@ func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
+	}
+
+	database, err := db.OpenSQLite(cfg.SQLitePath)
+	if err != nil {
+		log.Fatalf("failed to connect database: %v", err)
+	}
+	defer func() {
+		if closeErr := database.Close(); closeErr != nil {
+			log.Printf("database close error: %v", closeErr)
+		}
+	}()
+
+	if err := db.ApplyMigrations(database, cfg.MigrationsDir); err != nil {
+		log.Fatalf("failed to apply migrations: %v", err)
 	}
 
 	apiServer := server.New(cfg.Address(), cfg.ReadTimeout, cfg.WriteTimeout)

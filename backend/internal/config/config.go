@@ -14,6 +14,7 @@ type Config struct {
 	WriteTimeout    time.Duration
 	ShutdownTimeout time.Duration
 	SQLitePath      string
+	MigrationsDir   string
 }
 
 func Load() (Config, error) {
@@ -42,6 +43,11 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("SQLITE_PATH cannot be empty")
 	}
 
+	migrationsDir := stringFromEnv("MIGRATIONS_DIR", "./migrations")
+	if migrationsDir == "" {
+		return Config{}, fmt.Errorf("MIGRATIONS_DIR cannot be empty")
+	}
+
 	return Config{
 		Host:            stringFromEnv("APP_HOST", "127.0.0.1"),
 		Port:            port,
@@ -49,6 +55,7 @@ func Load() (Config, error) {
 		WriteTimeout:    writeTimeout,
 		ShutdownTimeout: shutdownTimeout,
 		SQLitePath:      sqlitePath,
+		MigrationsDir:   migrationsDir,
 	}, nil
 }
 
