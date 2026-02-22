@@ -4,11 +4,13 @@ frontend/.svelte-kit/
 frontend/build/
 frontend/.env
 frontend/.env.*
+!frontend/.env.example
 
 # Go / backend
 backend/bin/
 backend/.env
 backend/.env.*
+!backend/.env.example
 backend/hoel.db
 backend/hoel.db-*
 

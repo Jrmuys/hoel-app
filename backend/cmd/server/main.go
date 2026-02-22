@@ -1,0 +1,52 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"hoel-app/backend/internal/config"
+	"hoel-app/backend/internal/server"
+)
+
+func main() {
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
+	}
+
+	apiServer := server.New(cfg.Address(), cfg.ReadTimeout, cfg.WriteTimeout)
+	errChannel := make(chan error, 1)
+
+	go func() {
+		errChannel <- apiServer.ListenAndServe()
+	}()
+
+	log.Printf("server listening on %s", cfg.Address())
+
+	stopSignal := make(chan os.Signal, 1)
+	signal.Notify(stopSignal, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case sig := <-stopSignal:
+		log.Printf("received signal %s, shutting down", sig.String())
+	case serverErr := <-errChannel:
+		if !errors.Is(serverErr, http.ErrServerClosed) {
+			log.Fatalf("server failed: %v", serverErr)
+		}
+	}
+
+	shutdownContext, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+	defer cancel()
+
+	if err := apiServer.Shutdown(shutdownContext); err != nil {
+		log.Fatalf("shutdown failed: %v", err)
+	}
+
+	fmt.Println("server stopped cleanly")
+}
