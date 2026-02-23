@@ -56,6 +56,8 @@ interface RawIntegrationStatus {
 
 interface RawDailyOperationsResponse {
     tasks?: RawDailyTask[];
+    shoppingTasks?: RawDailyTask[];
+    maintenanceTasks?: RawDailyTask[];
     garbage?: RawGarbage;
 }
 
@@ -91,15 +93,19 @@ export async function loadStatusBar(fetchFn: FetchFn = fetch): Promise<StatusBar
 export async function loadDailyOperations(fetchFn: FetchFn = fetch): Promise<DailyOperationsModel> {
     const payload = await fetchJSON<RawDailyOperationsResponse>('/api/daily-operations', fetchFn);
 
+    const toTaskModel = (task: RawDailyTask) => ({
+        id: task.id ?? '',
+        title: task.title ?? 'Untitled task',
+        dueAt: task.dueAt ?? new Date().toISOString(),
+        hasTime: task.hasTime !== false,
+        completed: Boolean(task.completed),
+        source: toTaskSource(task.source),
+    });
+
     return {
-        tasks: (payload.tasks ?? []).map((task) => ({
-            id: task.id ?? '',
-            title: task.title ?? 'Untitled task',
-            dueAt: task.dueAt ?? new Date().toISOString(),
-            hasTime: task.hasTime !== false,
-            completed: Boolean(task.completed),
-            source: toTaskSource(task.source),
-        })),
+        tasks: (payload.tasks ?? []).map(toTaskModel),
+        shoppingTasks: (payload.shoppingTasks ?? []).map(toTaskModel),
+        maintenanceTasks: (payload.maintenanceTasks ?? []).map(toTaskModel),
         garbage: {
             nextPickupDate: payload.garbage?.nextPickupDate ?? '',
             nextTrashPickupDate:

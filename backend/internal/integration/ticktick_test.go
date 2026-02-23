@@ -43,7 +43,7 @@ func TestCreateTask_SendsTickTickDueDateFormat(t *testing.T) {
 
 	client := NewClient(2*time.Second, 0, 10*time.Millisecond, nil)
 	oauth := NewTickTickOAuthService(client, nil, "", "", "", "", "", "static-token")
-	service := NewTickTickService(client, repository, oauth, server.URL+"/open/v1", "project-1", time.Minute)
+	service := NewTickTickService(client, repository, oauth, server.URL+"/open/v1", "project-1", "", time.Minute)
 
 	dueAt := time.Date(2026, time.February, 22, 16, 30, 0, 0, time.UTC)
 	_, err := service.CreateTask(context.Background(), "Test create", dueAt, true)
@@ -86,7 +86,7 @@ func TestUpdateTask_SendsTickTickDueDateFormat(t *testing.T) {
 
 	client := NewClient(2*time.Second, 0, 10*time.Millisecond, nil)
 	oauth := NewTickTickOAuthService(client, nil, "", "", "", "", "", "static-token")
-	service := NewTickTickService(client, repository, oauth, server.URL+"/open/v1", "project-1", time.Minute)
+	service := NewTickTickService(client, repository, oauth, server.URL+"/open/v1", "project-1", "", time.Minute)
 
 	dueAt := time.Date(2026, time.February, 23, 8, 45, 0, 0, time.UTC)
 	err := service.UpdateTask(context.Background(), "task-123", "Test update", dueAt, true)
@@ -126,7 +126,7 @@ func TestCreateTask_SendsDateOnlyWhenTimeNotSet(t *testing.T) {
 
 	client := NewClient(2*time.Second, 0, 10*time.Millisecond, nil)
 	oauth := NewTickTickOAuthService(client, nil, "", "", "", "", "", "static-token")
-	service := NewTickTickService(client, repository, oauth, server.URL+"/open/v1", "project-1", time.Minute)
+	service := NewTickTickService(client, repository, oauth, server.URL+"/open/v1", "project-1", "", time.Minute)
 
 	dueAt := time.Date(2026, time.February, 22, 0, 0, 0, 0, time.Local)
 	_, err := service.CreateTask(context.Background(), "All-day", dueAt, false)
@@ -162,7 +162,7 @@ func TestCompleteTask_UsesProjectEndpointFirst(t *testing.T) {
 
 	client := NewClient(2*time.Second, 0, 10*time.Millisecond, nil)
 	oauth := NewTickTickOAuthService(client, nil, "", "", "", "", "", "static-token")
-	service := NewTickTickService(client, repository, oauth, server.URL+"/open/v1", "project-1", time.Minute)
+	service := NewTickTickService(client, repository, oauth, server.URL+"/open/v1", "project-1", "", time.Minute)
 
 	err := service.CompleteTask(context.Background(), "task-123")
 	if err != nil {
@@ -206,7 +206,7 @@ func TestCompleteTask_FallsBackToLegacyEndpointOn404(t *testing.T) {
 
 	client := NewClient(2*time.Second, 0, 10*time.Millisecond, nil)
 	oauth := NewTickTickOAuthService(client, nil, "", "", "", "", "", "static-token")
-	service := NewTickTickService(client, repository, oauth, server.URL+"/open/v1", "project-1", time.Minute)
+	service := NewTickTickService(client, repository, oauth, server.URL+"/open/v1", "project-1", "", time.Minute)
 
 	err := service.CompleteTask(context.Background(), "task-456")
 	if err != nil {
@@ -239,7 +239,7 @@ func TestCompleteTask_ReturnsErrorWhenAllEndpointsFail(t *testing.T) {
 
 	client := NewClient(2*time.Second, 0, 10*time.Millisecond, nil)
 	oauth := NewTickTickOAuthService(client, nil, "", "", "", "", "", "static-token")
-	service := NewTickTickService(client, repository, oauth, server.URL+"/open/v1", "project-1", time.Minute)
+	service := NewTickTickService(client, repository, oauth, server.URL+"/open/v1", "project-1", "", time.Minute)
 
 	err := service.CompleteTask(context.Background(), "task-789")
 	if err == nil {
@@ -267,6 +267,7 @@ func newTickTickTestDatabase(t *testing.T) *sql.DB {
 			title TEXT NOT NULL,
 			due_at TEXT NOT NULL,
 			has_time INTEGER NOT NULL DEFAULT 1,
+			tags_json TEXT NOT NULL DEFAULT '[]',
 			completed INTEGER NOT NULL DEFAULT 0,
 			source_project TEXT NOT NULL,
 			updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -287,8 +288,8 @@ func insertPendingTask(t *testing.T, database *sql.DB, taskID string) {
 	t.Helper()
 
 	_, err := database.Exec(`
-		INSERT INTO ticktick_task_cache (task_id, title, due_at, has_time, completed, source_project, updated_at)
-		VALUES (?, ?, ?, 1, 0, ?, CURRENT_TIMESTAMP);
+		INSERT INTO ticktick_task_cache (task_id, title, due_at, has_time, tags_json, completed, source_project, updated_at)
+		VALUES (?, ?, ?, 1, '[]', 0, ?, CURRENT_TIMESTAMP);
 	`, taskID, "Test Task", time.Now().UTC().Format(time.RFC3339), "project-1")
 	if err != nil {
 		t.Fatalf("insert pending task: %v", err)

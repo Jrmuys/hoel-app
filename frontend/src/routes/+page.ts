@@ -17,6 +17,8 @@ const fallbackStatus: StatusBarModel = {
 
 const fallbackDailyOperations: DailyOperationsModel = {
     tasks: [],
+    shoppingTasks: [],
+    maintenanceTasks: [],
     garbage: {
         nextPickupDate: '',
         nextTrashPickupDate: '',

@@ -63,6 +63,7 @@ func main() {
 		tickTickOAuth,
 		cfg.TickTickAPIRoot,
 		cfg.TickTickProject,
+		cfg.TickTickShoppingProject,
 		cfg.TickTickPoll,
 	)
 
@@ -89,6 +90,9 @@ func main() {
 		integrationClient,
 		tickTickOAuth,
 		cfg.TickTickAPIRoot,
+		cfg.TickTickShoppingProject,
+		cfg.TickTickDailyTag,
+		cfg.TickTickMaintenanceTag,
 	)
 	errChannel := make(chan error, 1)
 

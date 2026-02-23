@@ -17,12 +17,13 @@ import (
 )
 
 type TickTickService struct {
-	client       *Client
-	repository   *db.TickTickRepository
-	oauth        *TickTickOAuthService
-	apiRoot      string
-	projectID    string
-	pollInterval time.Duration
+	client            *Client
+	repository        *db.TickTickRepository
+	oauth             *TickTickOAuthService
+	apiRoot           string
+	projectID         string
+	shoppingProjectID string
+	pollInterval      time.Duration
 }
 
 type tickTickProjectDataResponse struct {
@@ -30,13 +31,14 @@ type tickTickProjectDataResponse struct {
 }
 
 type tickTickTaskDTO struct {
-	ID       string `json:"id"`
-	Title    string `json:"title"`
-	DueDate  string `json:"dueDate"`
-	AllDay   bool   `json:"allDay"`
-	IsAllDay bool   `json:"isAllDay"`
-	Status   int    `json:"status"`
-	Priority int    `json:"priority"`
+	ID       string   `json:"id"`
+	Title    string   `json:"title"`
+	DueDate  string   `json:"dueDate"`
+	AllDay   bool     `json:"allDay"`
+	IsAllDay bool     `json:"isAllDay"`
+	Tags     []string `json:"tags"`
+	Status   int      `json:"status"`
+	Priority int      `json:"priority"`
 }
 
 type tickTickTaskUpsertRequest struct {
@@ -47,18 +49,19 @@ type tickTickTaskUpsertRequest struct {
 	IsAllDay  *bool  `json:"isAllDay,omitempty"`
 }
 
-func NewTickTickService(client *Client, repository *db.TickTickRepository, oauth *TickTickOAuthService, apiRoot, projectID string, pollInterval time.Duration) *TickTickService {
+func NewTickTickService(client *Client, repository *db.TickTickRepository, oauth *TickTickOAuthService, apiRoot, projectID, shoppingProjectID string, pollInterval time.Duration) *TickTickService {
 	if pollInterval <= 0 {
 		pollInterval = 10 * time.Minute
 	}
 
 	return &TickTickService{
-		client:       client,
-		repository:   repository,
-		oauth:        oauth,
-		apiRoot:      strings.TrimSpace(apiRoot),
-		projectID:    strings.TrimSpace(projectID),
-		pollInterval: pollInterval,
+		client:            client,
+		repository:        repository,
+		oauth:             oauth,
+		apiRoot:           strings.TrimSpace(apiRoot),
+		projectID:         strings.TrimSpace(projectID),
+		shoppingProjectID: strings.TrimSpace(shoppingProjectID),
+		pollInterval:      pollInterval,
 	}
 }
 
@@ -72,7 +75,7 @@ func (s *TickTickService) Start(ctx context.Context) {
 		return
 	}
 
-	log.Printf("ticktick sync started: project=%s interval=%s", s.projectID, s.pollInterval)
+	log.Printf("ticktick sync started: projects=%v interval=%s", s.syncProjectIDs(), s.pollInterval)
 
 	if err := s.SyncOnce(ctx); err != nil {
 		log.Printf("ticktick initial sync failed: %v", err)
@@ -100,14 +103,37 @@ func (s *TickTickService) SyncOnce(ctx context.Context) error {
 		return nil
 	}
 
-	requestURL := fmt.Sprintf("%s/project/%s/data", strings.TrimRight(s.apiRoot, "/"), url.PathEscape(s.projectID))
-	log.Printf("ticktick sync request: project=%s endpoint=%s", s.projectID, requestURL)
-
 	accessToken, err := s.oauth.ResolveAccessToken(ctx)
 	if err != nil {
 		log.Printf("ticktick token resolution failed: %v", err)
 		return err
 	}
+
+	allTasks := make([]db.TickTickTask, 0)
+	totalSkippedWithoutDueDate := 0
+	for _, projectID := range s.syncProjectIDs() {
+		projectTasks, skippedWithoutDueDate, err := s.loadProjectTasks(ctx, accessToken, projectID)
+		if err != nil {
+			return err
+		}
+
+		allTasks = append(allTasks, projectTasks...)
+		totalSkippedWithoutDueDate += skippedWithoutDueDate
+	}
+
+	if err := s.repository.ReplaceTasks(ctx, allTasks); err != nil {
+		log.Printf("ticktick cache update failed: %v", err)
+		return err
+	}
+
+	log.Printf("ticktick sync completed: cached_tasks=%d skipped_without_due_date=%d", len(allTasks), totalSkippedWithoutDueDate)
+
+	return nil
+}
+
+func (s *TickTickService) loadProjectTasks(ctx context.Context, accessToken, projectID string) ([]db.TickTickTask, int, error) {
+	requestURL := fmt.Sprintf("%s/project/%s/data", strings.TrimRight(s.apiRoot, "/"), url.PathEscape(projectID))
+	log.Printf("ticktick sync request: project=%s endpoint=%s", projectID, requestURL)
 
 	response, err := s.client.Do(ctx, Request{
 		Service: "ticktick",
@@ -120,13 +146,13 @@ func (s *TickTickService) SyncOnce(ctx context.Context) error {
 	})
 	if err != nil {
 		log.Printf("ticktick project data request failed: %v", err)
-		return err
+		return nil, 0, err
 	}
 
 	var payload tickTickProjectDataResponse
 	if err := json.Unmarshal(response.Body, &payload); err != nil {
 		log.Printf("ticktick response decode failed: %v", err)
-		return fmt.Errorf("decode ticktick response: %w", err)
+		return nil, 0, fmt.Errorf("decode ticktick response: %w", err)
 	}
 
 	if len(payload.Tasks) == 0 {
@@ -136,7 +162,7 @@ func (s *TickTickService) SyncOnce(ctx context.Context) error {
 		}
 	}
 
-	log.Printf("ticktick project data received: project=%s tasks=%d", s.projectID, len(payload.Tasks))
+	log.Printf("ticktick project data received: project=%s tasks=%d", projectID, len(payload.Tasks))
 	if len(payload.Tasks) == 0 {
 		log.Printf("ticktick project data empty tasks payload preview=%q", truncateTickTickBodyPreview(response.Body, 600))
 	}
@@ -147,7 +173,7 @@ func (s *TickTickService) SyncOnce(ctx context.Context) error {
 		dueAt, ok, err := parseTickTickDueDate(task.DueDate)
 		if err != nil {
 			log.Printf("ticktick task due-date parse failed: task=%s value=%q err=%v", task.ID, task.DueDate, err)
-			return fmt.Errorf("parse ticktick due date for task %s: %w", task.ID, err)
+			return nil, 0, fmt.Errorf("parse ticktick due date for task %s: %w", task.ID, err)
 		}
 		if !ok {
 			skippedWithoutDueDate++
@@ -159,19 +185,13 @@ func (s *TickTickService) SyncOnce(ctx context.Context) error {
 			Title:         strings.TrimSpace(task.Title),
 			DueAt:         dueAt,
 			HasTime:       !(task.AllDay || task.IsAllDay),
+			Tags:          task.Tags,
 			Completed:     tickTickCompleted(task.Status),
-			SourceProject: s.projectID,
+			SourceProject: projectID,
 		})
 	}
 
-	if err := s.repository.ReplaceTasks(ctx, tasks); err != nil {
-		log.Printf("ticktick cache update failed: %v", err)
-		return err
-	}
-
-	log.Printf("ticktick sync completed: cached_tasks=%d skipped_without_due_date=%d", len(tasks), skippedWithoutDueDate)
-
-	return nil
+	return tasks, skippedWithoutDueDate, nil
 }
 
 func (s *TickTickService) CompleteTask(ctx context.Context, taskID string) error {
@@ -425,6 +445,26 @@ func tickTickCompleted(status int) bool {
 	return status != 0
 }
 
+func (s *TickTickService) syncProjectIDs() []string {
+	projectIDs := make([]string, 0, 2)
+	seen := map[string]struct{}{}
+	for _, candidate := range []string{s.projectID, s.shoppingProjectID} {
+		projectID := strings.TrimSpace(candidate)
+		if projectID == "" {
+			continue
+		}
+
+		if _, exists := seen[projectID]; exists {
+			continue
+		}
+
+		seen[projectID] = struct{}{}
+		projectIDs = append(projectIDs, projectID)
+	}
+
+	return projectIDs
+}
+
 func extractTickTickTasks(value any) []tickTickTaskDTO {
 	switch typed := value.(type) {
 	case map[string]any:
@@ -481,6 +521,7 @@ func extractTickTickTasksFromArray(value any) ([]tickTickTaskDTO, bool) {
 			DueDate:  mapStringValue(entry, "dueDate"),
 			AllDay:   mapBoolValue(entry, "allDay"),
 			IsAllDay: mapBoolValue(entry, "isAllDay"),
+			Tags:     mapStringSliceValue(entry, "tags"),
 			Status:   mapIntValue(entry, "status"),
 		})
 	}
@@ -549,6 +590,35 @@ func mapBoolValue(entry map[string]any, key string) bool {
 	default:
 		return false
 	}
+}
+
+func mapStringSliceValue(entry map[string]any, key string) []string {
+	value, ok := entry[key]
+	if !ok || value == nil {
+		return nil
+	}
+
+	rawValues, ok := value.([]any)
+	if !ok {
+		return nil
+	}
+
+	values := make([]string, 0, len(rawValues))
+	for _, rawValue := range rawValues {
+		text, ok := rawValue.(string)
+		if !ok {
+			continue
+		}
+
+		trimmed := strings.TrimSpace(text)
+		if trimmed == "" {
+			continue
+		}
+
+		values = append(values, trimmed)
+	}
+
+	return values
 }
 
 func truncateTickTickBodyPreview(body []byte, maxLength int) string {

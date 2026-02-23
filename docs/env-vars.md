@@ -25,6 +25,9 @@
 | `TICKTICK_REDIRECT_URI` | Yes** | _(empty)_ | OAuth callback URL handled by backend |
 | `TICKTICK_ACCESS_TOKEN` | Optional | _(empty)_ | Optional manual access token fallback (skips OAuth flow) |
 | `TICKTICK_PROJECT_ID` | Yes** | _(empty)_ | TickTick project/list ID to poll |
+| `TICKTICK_SHOPPING_PROJECT_ID` | No | _(empty)_ | Additional TickTick shopping project/list ID to poll |
+| `TICKTICK_DAILY_TAG` | No | `daily` | Tag used to force-include tasks in Daily Operations |
+| `TICKTICK_MAINTENANCE_TAG` | No | `maintenance` | Tag used to classify maintenance tasks |
 | `TICKTICK_POLL_INTERVAL` | No | `10m` | Polling interval for TickTick sync |
 
 \* Required to enable PGH polling.

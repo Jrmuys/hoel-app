@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,16 +13,19 @@ import (
 )
 
 type Server struct {
-	httpServer         *http.Server
-	monitoring         *db.MonitoringRepository
-	pghRepository      *db.PGHRepository
-	tickTickRepository *db.TickTickRepository
-	tickTickService    *integration.TickTickService
-	integrationClient  *integration.Client
-	tickTickOAuth      *integration.TickTickOAuthService
-	tickTickAPIRoot    string
-	tickTickStateStore map[string]time.Time
-	tickTickStateLock  sync.Mutex
+	httpServer              *http.Server
+	monitoring              *db.MonitoringRepository
+	pghRepository           *db.PGHRepository
+	tickTickRepository      *db.TickTickRepository
+	tickTickService         *integration.TickTickService
+	integrationClient       *integration.Client
+	tickTickOAuth           *integration.TickTickOAuthService
+	tickTickAPIRoot         string
+	tickTickShoppingProject string
+	tickTickDailyTag        string
+	tickTickMaintenanceTag  string
+	tickTickStateStore      map[string]time.Time
+	tickTickStateLock       sync.Mutex
 }
 
 type healthResponse struct {
@@ -29,17 +33,20 @@ type healthResponse struct {
 	Timestamp string `json:"timestamp"`
 }
 
-func New(address string, readTimeout, writeTimeout time.Duration, allowedOrigins []string, monitoring *db.MonitoringRepository, pghRepository *db.PGHRepository, tickTickRepository *db.TickTickRepository, tickTickService *integration.TickTickService, integrationClient *integration.Client, tickTickOAuth *integration.TickTickOAuthService, tickTickAPIRoot string) *Server {
+func New(address string, readTimeout, writeTimeout time.Duration, allowedOrigins []string, monitoring *db.MonitoringRepository, pghRepository *db.PGHRepository, tickTickRepository *db.TickTickRepository, tickTickService *integration.TickTickService, integrationClient *integration.Client, tickTickOAuth *integration.TickTickOAuthService, tickTickAPIRoot, tickTickShoppingProject, tickTickDailyTag, tickTickMaintenanceTag string) *Server {
 	mux := http.NewServeMux()
 	server := &Server{
-		monitoring:         monitoring,
-		pghRepository:      pghRepository,
-		tickTickRepository: tickTickRepository,
-		tickTickService:    tickTickService,
-		integrationClient:  integrationClient,
-		tickTickOAuth:      tickTickOAuth,
-		tickTickAPIRoot:    tickTickAPIRoot,
-		tickTickStateStore: map[string]time.Time{},
+		monitoring:              monitoring,
+		pghRepository:           pghRepository,
+		tickTickRepository:      tickTickRepository,
+		tickTickService:         tickTickService,
+		integrationClient:       integrationClient,
+		tickTickOAuth:           tickTickOAuth,
+		tickTickAPIRoot:         tickTickAPIRoot,
+		tickTickShoppingProject: strings.TrimSpace(tickTickShoppingProject),
+		tickTickDailyTag:        normalizeTickTickTag(tickTickDailyTag),
+		tickTickMaintenanceTag:  normalizeTickTickTag(tickTickMaintenanceTag),
+		tickTickStateStore:      map[string]time.Time{},
 	}
 	mux.HandleFunc("/api/health", healthHandler)
 	mux.HandleFunc("/api/status-bar", server.statusBarHandler)
@@ -61,6 +68,11 @@ func New(address string, readTimeout, writeTimeout time.Duration, allowedOrigins
 	}
 
 	return server
+}
+
+func normalizeTickTickTag(tag string) string {
+	trimmed := strings.TrimSpace(strings.ToLower(tag))
+	return strings.TrimPrefix(trimmed, "#")
 }
 
 func (s *Server) ListenAndServe() error {
