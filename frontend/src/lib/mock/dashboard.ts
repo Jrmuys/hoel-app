@@ -58,8 +58,12 @@ export async function loadDailyOperations(): Promise<DailyOperationsModel> {
         ],
         garbage: {
             nextPickupDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            nextTrashPickupDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            nextRecyclingPickupDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
             isRecyclingWeek: true,
-            showIndicator: true
+            showIndicator: true,
+            showTrashTakeOutReminder: true,
+            showRecyclingTakeOutReminder: false,
         }
     };
 }

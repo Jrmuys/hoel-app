@@ -69,8 +69,12 @@ interface RawDailyTask {
 
 interface RawGarbage {
     nextPickupDate?: string;
+    nextTrashPickupDate?: string;
+    nextRecyclingPickupDate?: string;
     isRecyclingWeek?: boolean;
     showIndicator?: boolean;
+    showTrashTakeOutReminder?: boolean;
+    showRecyclingTakeOutReminder?: boolean;
 }
 
 export async function loadStatusBar(fetchFn: FetchFn = fetch): Promise<StatusBarModel> {
@@ -96,8 +100,13 @@ export async function loadDailyOperations(fetchFn: FetchFn = fetch): Promise<Dai
         })),
         garbage: {
             nextPickupDate: payload.garbage?.nextPickupDate ?? '',
+            nextTrashPickupDate:
+                payload.garbage?.nextTrashPickupDate ?? payload.garbage?.nextPickupDate ?? '',
+            nextRecyclingPickupDate: payload.garbage?.nextRecyclingPickupDate ?? '',
             isRecyclingWeek: Boolean(payload.garbage?.isRecyclingWeek),
             showIndicator: Boolean(payload.garbage?.showIndicator),
+            showTrashTakeOutReminder: Boolean(payload.garbage?.showTrashTakeOutReminder),
+            showRecyclingTakeOutReminder: Boolean(payload.garbage?.showRecyclingTakeOutReminder),
         },
     };
 }

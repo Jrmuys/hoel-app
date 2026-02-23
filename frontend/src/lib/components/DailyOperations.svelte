@@ -10,6 +10,14 @@
             day: 'numeric',
         });
     }
+
+    function formatOptionalDate(dateIso: string): string {
+        if (!dateIso) {
+            return 'Not available';
+        }
+
+        return formatDate(dateIso);
+    }
 </script>
 
 <section class="panel">
@@ -20,20 +28,41 @@
                 Priority tasks for the next 24 hours
             </p>
         </div>
-        {#if data.garbage.showIndicator}
-            <span
-                class="rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--color-primary)]"
-            >
-                {data.garbage.isRecyclingWeek ? 'Recycling' : 'Trash'} pickup {formatDate(
-                    data.garbage.nextPickupDate,
-                )}
-            </span>
-        {:else}
-            <span class="rounded-full border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 px-3 py-1 text-xs font-medium text-[var(--color-text)]/70">
-                No pickup scheduled in the next 24 hours
-            </span>
-        {/if}
+        <div class="flex flex-wrap gap-2">
+            {#if data.garbage.showTrashTakeOutReminder}
+                <span
+                    class="rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--color-primary)]"
+                >
+                    Take out trash tonight
+                </span>
+            {/if}
+            {#if data.garbage.showRecyclingTakeOutReminder}
+                <span
+                    class="rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--color-primary)]"
+                >
+                    Take out recycling tonight
+                </span>
+            {/if}
+            {#if !data.garbage.showTrashTakeOutReminder && !data.garbage.showRecyclingTakeOutReminder}
+                <span
+                    class="rounded-full border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 px-3 py-1 text-xs font-medium text-[var(--color-text)]/70"
+                >
+                    No pickup scheduled in the next 24 hours
+                </span>
+            {/if}
+        </div>
     </header>
+
+    <div class="mt-5 grid gap-2 sm:grid-cols-2">
+        <div class="rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 p-3">
+            <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70">Next Trash</p>
+            <p class="mt-1 text-sm font-semibold">{formatOptionalDate(data.garbage.nextTrashPickupDate)}</p>
+        </div>
+        <div class="rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 p-3">
+            <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70">Next Recycling</p>
+            <p class="mt-1 text-sm font-semibold">{formatOptionalDate(data.garbage.nextRecyclingPickupDate)}</p>
+        </div>
+    </div>
 
     {#if data.tasks.length > 0}
         <ul class="mt-5 space-y-2.5">
@@ -57,7 +86,9 @@
             {/each}
         </ul>
     {:else}
-        <p class="mt-5 rounded-xl border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 p-3 text-sm text-[var(--color-text)]/70">
+        <p
+            class="mt-5 rounded-xl border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 p-3 text-sm text-[var(--color-text)]/70"
+        >
             No daily tasks available yet.
         </p>
     {/if}

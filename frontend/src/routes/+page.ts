@@ -19,8 +19,12 @@ const fallbackDailyOperations: DailyOperationsModel = {
     tasks: [],
     garbage: {
         nextPickupDate: '',
+        nextTrashPickupDate: '',
+        nextRecyclingPickupDate: '',
         isRecyclingWeek: false,
         showIndicator: false,
+        showTrashTakeOutReminder: false,
+        showRecyclingTakeOutReminder: false,
     },
 };
 

@@ -259,8 +259,12 @@ func (s *PGHService) toSchedule(payload pghPayload) (db.PGHSchedule, error) {
 	}
 
 	now := time.Now().UTC()
-	diff := nextPickupDate.Sub(now)
-	showIndicator := diff >= 0 && diff <= 24*time.Hour
+	trashDiff := nextPickupDate.Sub(now)
+	showIndicator := trashDiff >= 0 && trashDiff <= 24*time.Hour
+	if !showIndicator && nextRecyclingDate != nil {
+		recyclingDiff := nextRecyclingDate.Sub(now)
+		showIndicator = recyclingDiff >= 0 && recyclingDiff <= 24*time.Hour
+	}
 
 	return db.PGHSchedule{
 		NextPickupDate:    nextPickupDate,

@@ -30,8 +30,12 @@ export interface DailyTask {
 
 export interface GarbageWindow {
     nextPickupDate: string;
+    nextTrashPickupDate: string;
+    nextRecyclingPickupDate: string;
     isRecyclingWeek: boolean;
     showIndicator: boolean;
+    showTrashTakeOutReminder: boolean;
+    showRecyclingTakeOutReminder: boolean;
 }
 
 export interface DailyOperationsModel {

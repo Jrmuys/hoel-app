@@ -19,18 +19,26 @@ type dailyTaskResponse struct {
 }
 
 type garbageResponse struct {
-	NextPickupDate  string `json:"nextPickupDate"`
-	IsRecyclingWeek bool   `json:"isRecyclingWeek"`
-	ShowIndicator   bool   `json:"showIndicator"`
+	NextPickupDate             string `json:"nextPickupDate"`
+	NextTrashPickupDate        string `json:"nextTrashPickupDate"`
+	NextRecyclingPickupDate    string `json:"nextRecyclingPickupDate"`
+	IsRecyclingWeek            bool   `json:"isRecyclingWeek"`
+	ShowIndicator              bool   `json:"showIndicator"`
+	ShowTrashTakeOutReminder   bool   `json:"showTrashTakeOutReminder"`
+	ShowRecyclingTakeOutReminder bool `json:"showRecyclingTakeOutReminder"`
 }
 
 func (s *Server) dailyOperationsHandler(w http.ResponseWriter, r *http.Request) {
 	payload := dailyOperationsResponse{
 		Tasks: []dailyTaskResponse{},
 		Garbage: garbageResponse{
-			NextPickupDate:  "",
-			IsRecyclingWeek: false,
-			ShowIndicator:   false,
+			NextPickupDate:               "",
+			NextTrashPickupDate:          "",
+			NextRecyclingPickupDate:      "",
+			IsRecyclingWeek:              false,
+			ShowIndicator:                false,
+			ShowTrashTakeOutReminder:     false,
+			ShowRecyclingTakeOutReminder: false,
 		},
 	}
 
@@ -42,11 +50,25 @@ func (s *Server) dailyOperationsHandler(w http.ResponseWriter, r *http.Request) 
 		}
 
 		if schedule != nil {
+			now := time.Now().UTC()
 			payload.Garbage.NextPickupDate = schedule.NextPickupDate.UTC().Format(time.RFC3339)
+			payload.Garbage.NextTrashPickupDate = schedule.NextPickupDate.UTC().Format(time.RFC3339)
 			payload.Garbage.IsRecyclingWeek = schedule.IsRecyclingWeek
-			payload.Garbage.ShowIndicator = schedule.ShowIndicator
+			payload.Garbage.ShowTrashTakeOutReminder = isWithinNextDay(now, schedule.NextPickupDate)
+
+			if schedule.NextRecyclingDate != nil {
+				payload.Garbage.NextRecyclingPickupDate = schedule.NextRecyclingDate.UTC().Format(time.RFC3339)
+				payload.Garbage.ShowRecyclingTakeOutReminder = isWithinNextDay(now, *schedule.NextRecyclingDate)
+			}
+
+			payload.Garbage.ShowIndicator = payload.Garbage.ShowTrashTakeOutReminder || payload.Garbage.ShowRecyclingTakeOutReminder || schedule.ShowIndicator
 		}
 	}
 
 	writeJSON(w, http.StatusOK, payload)
+}
+
+func isWithinNextDay(now, scheduledAt time.Time) bool {
+	delta := scheduledAt.UTC().Sub(now.UTC())
+	return delta >= 0 && delta <= 24*time.Hour
 }
