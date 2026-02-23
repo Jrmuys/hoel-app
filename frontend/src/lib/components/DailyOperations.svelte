@@ -585,7 +585,7 @@
         <div class="mt-2 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
             <input
                 type="text"
-                class="rounded-lg border border-[var(--color-secondary)]/30 bg-transparent px-3 py-2 text-sm"
+                class="h-10 rounded-lg border border-[var(--color-secondary)]/30 bg-transparent px-3 text-sm"
                 placeholder="Task title"
                 bind:value={newTaskTitle}
                 disabled={mutatingTaskId !== ''}
@@ -596,7 +596,7 @@
             >
                 <button
                     type="button"
-                    class="inline-flex items-center gap-2 rounded-lg border border-[var(--color-secondary)]/30 bg-transparent px-3 py-2 text-sm"
+                    class="inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--color-secondary)]/30 bg-transparent px-3 text-sm"
                     onclick={() => openPicker('new')}
                     disabled={mutatingTaskId !== ''}
                 >
@@ -703,7 +703,7 @@
             </div>
             <button
                 type="button"
-                class="rounded-lg border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-3 py-2 text-sm font-medium text-[var(--color-primary)]"
+                class="inline-flex h-10 items-center rounded-lg border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-3 text-sm font-medium text-[var(--color-primary)]"
                 onclick={handleCreateTask}
                 disabled={mutatingTaskId !== ''}
             >
@@ -717,12 +717,12 @@
             {#each viewData.tasks as task}
                 {@const typedTask = task as DailyTask}
                 <li
-                    class={`flex gap-2 rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 px-2.5 ${editingTaskId === typedTask.id ? 'items-start py-2' : 'items-center py-2.5'}`}
+                    class={`flex gap-2 rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 px-2.5 py-2.5 ${editingTaskId === typedTask.id ? 'items-start' : 'items-center'}`}
                 >
                     <input
                         type="checkbox"
                         checked={typedTask.completed}
-                        class="task-checkbox mt-0.5"
+                        class="task-checkbox self-center"
                         disabled={typedTask.source !== 'ticktick' ||
                             completingTaskId !== ''}
                         onchange={() =>
@@ -734,17 +734,17 @@
                     <div class="min-w-0 flex-1">
                         {#if editingTaskId === typedTask.id}
                             <div
-                                class="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]"
+                                class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto]"
                             >
                                 <input
                                     type="text"
-                                    class="rounded-lg border border-[var(--color-secondary)]/30 bg-transparent px-2.5 py-1.5 text-sm"
+                                    class="h-8 rounded-lg border border-[var(--color-secondary)]/30 bg-transparent px-2.5 text-sm"
                                     bind:value={editTaskTitle}
                                     disabled={mutatingTaskId !== ''}
                                 />
                                 <input
                                     type="time"
-                                    class="native-time h-8 rounded-lg border border-[var(--color-secondary)]/30 bg-transparent pl-2.5 pr-3 text-xs w-28"
+                                    class="native-time h-8 w-32 rounded-lg border border-[var(--color-secondary)]/30 bg-transparent pl-2.5 pr-3 text-sm"
                                     bind:value={editTaskTime}
                                     disabled={mutatingTaskId !== ''}
                                 />
@@ -754,7 +754,7 @@
                                 >
                                     <button
                                         type="button"
-                                        class="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--color-secondary)]/30 px-2 text-xs"
+                                        class="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--color-secondary)]/30 px-2.5 text-sm"
                                         onclick={() => openPicker('edit')}
                                         disabled={mutatingTaskId !== ''}
                                     >
@@ -883,7 +883,7 @@
                                 </div>
                                 <button
                                     type="button"
-                                    class="rounded-lg border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-2.5 py-1.5 text-xs font-medium text-[var(--color-primary)]"
+                                    class="inline-flex h-8 items-center rounded-lg border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-3 text-sm font-medium text-[var(--color-primary)]"
                                     onclick={() => saveTaskEdit(typedTask.id)}
                                     disabled={mutatingTaskId !== ''}
                                 >
@@ -891,7 +891,7 @@
                                 </button>
                                 <button
                                     type="button"
-                                    class="rounded-lg border border-[var(--color-secondary)]/40 px-2.5 py-1.5 text-xs"
+                                    class="inline-flex h-8 items-center rounded-lg border border-[var(--color-secondary)]/40 px-3 text-sm"
                                     onclick={cancelEditingTask}
                                     disabled={mutatingTaskId !== ''}
                                 >
@@ -900,7 +900,7 @@
                             </div>
                         {:else}
                             <div
-                                class="flex flex-wrap items-center gap-x-2 gap-y-0.5"
+                                class="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-0.5"
                             >
                                 <p
                                     class="truncate text-sm font-medium leading-tight"

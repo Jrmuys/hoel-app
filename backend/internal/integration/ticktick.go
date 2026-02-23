@@ -34,6 +34,7 @@ type tickTickTaskDTO struct {
 	Title    string `json:"title"`
 	DueDate  string `json:"dueDate"`
 	AllDay   bool   `json:"allDay"`
+	IsAllDay bool   `json:"isAllDay"`
 	Status   int    `json:"status"`
 	Priority int    `json:"priority"`
 }
@@ -43,6 +44,7 @@ type tickTickTaskUpsertRequest struct {
 	Title     string `json:"title"`
 	DueDate   string `json:"dueDate,omitempty"`
 	AllDay    *bool  `json:"allDay,omitempty"`
+	IsAllDay  *bool  `json:"isAllDay,omitempty"`
 }
 
 func NewTickTickService(client *Client, repository *db.TickTickRepository, oauth *TickTickOAuthService, apiRoot, projectID string, pollInterval time.Duration) *TickTickService {
@@ -156,7 +158,7 @@ func (s *TickTickService) SyncOnce(ctx context.Context) error {
 			ID:            strings.TrimSpace(task.ID),
 			Title:         strings.TrimSpace(task.Title),
 			DueAt:         dueAt,
-			HasTime:       !task.AllDay,
+			HasTime:       !(task.AllDay || task.IsAllDay),
 			Completed:     tickTickCompleted(task.Status),
 			SourceProject: s.projectID,
 		})
@@ -266,6 +268,7 @@ func (s *TickTickService) CreateTask(ctx context.Context, title string, dueAt ti
 	if !hasTime {
 		allDay := true
 		bodyPayload.AllDay = &allDay
+		bodyPayload.IsAllDay = &allDay
 	}
 	body, err := json.Marshal(bodyPayload)
 	if err != nil {
@@ -331,6 +334,7 @@ func (s *TickTickService) UpdateTask(ctx context.Context, taskID, title string, 
 	if !hasTime {
 		allDay := true
 		bodyPayload.AllDay = &allDay
+		bodyPayload.IsAllDay = &allDay
 	}
 	body, err := json.Marshal(bodyPayload)
 	if err != nil {
@@ -472,11 +476,12 @@ func extractTickTickTasksFromArray(value any) ([]tickTickTaskDTO, bool) {
 		}
 
 		tasks = append(tasks, tickTickTaskDTO{
-			ID:      id,
-			Title:   title,
-			DueDate: mapStringValue(entry, "dueDate"),
-			AllDay:  mapBoolValue(entry, "allDay"),
-			Status:  mapIntValue(entry, "status"),
+			ID:       id,
+			Title:    title,
+			DueDate:  mapStringValue(entry, "dueDate"),
+			AllDay:   mapBoolValue(entry, "allDay"),
+			IsAllDay: mapBoolValue(entry, "isAllDay"),
+			Status:   mapIntValue(entry, "status"),
 		})
 	}
 
