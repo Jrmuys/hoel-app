@@ -45,7 +45,7 @@ func (s *Server) dailyOperationsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if s.tickTickRepository != nil {
-		tasks, err := s.tickTickRepository.ListTasksDueBetween(r.Context(), now, now.Add(24*time.Hour))
+		tasks, err := s.tickTickRepository.ListTasksDueBetween(r.Context(), now.Add(-24*time.Hour), now.Add(24*time.Hour))
 		if err != nil {
 			http.Error(w, "unable to load daily operations", http.StatusInternalServerError)
 			return

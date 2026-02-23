@@ -133,3 +133,21 @@ func (r *TickTickRepository) ListTasksDueBetween(ctx context.Context, startInclu
 
 	return tasks, nil
 }
+
+func (r *TickTickRepository) MarkTaskCompleted(ctx context.Context, taskID string) error {
+	if taskID == "" {
+		return fmt.Errorf("task id is required")
+	}
+
+	const statement = `
+	UPDATE ticktick_task_cache
+	SET completed = 1,
+	    updated_at = CURRENT_TIMESTAMP
+	WHERE task_id = ?;`
+
+	if _, err := r.database.ExecContext(ctx, statement, taskID); err != nil {
+		return fmt.Errorf("mark ticktick task completed: %w", err)
+	}
+
+	return nil
+}

@@ -3,10 +3,12 @@ package integration
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -116,7 +118,17 @@ func (s *TickTickService) SyncOnce(ctx context.Context) error {
 		return fmt.Errorf("decode ticktick response: %w", err)
 	}
 
+	if len(payload.Tasks) == 0 {
+		var decoded any
+		if err := json.Unmarshal(response.Body, &decoded); err == nil {
+			payload.Tasks = extractTickTickTasks(decoded)
+		}
+	}
+
 	log.Printf("ticktick project data received: project=%s tasks=%d", s.projectID, len(payload.Tasks))
+	if len(payload.Tasks) == 0 {
+		log.Printf("ticktick project data empty tasks payload preview=%q", truncateTickTickBodyPreview(response.Body, 600))
+	}
 
 	tasks := make([]db.TickTickTask, 0, len(payload.Tasks))
 	skippedWithoutDueDate := 0
@@ -150,6 +162,73 @@ func (s *TickTickService) SyncOnce(ctx context.Context) error {
 	return nil
 }
 
+func (s *TickTickService) CompleteTask(ctx context.Context, taskID string) error {
+	if !s.Enabled() {
+		log.Printf("ticktick complete-task skipped: service not enabled")
+		return fmt.Errorf("ticktick service is not enabled")
+	}
+
+	taskID = strings.TrimSpace(taskID)
+	if taskID == "" {
+		return fmt.Errorf("task id is required")
+	}
+
+	accessToken, err := s.oauth.ResolveAccessToken(ctx)
+	if err != nil {
+		log.Printf("ticktick complete-task token resolution failed: %v", err)
+		return err
+	}
+
+	baseURL := strings.TrimRight(s.apiRoot, "/")
+	requestURLs := []string{
+		fmt.Sprintf("%s/project/%s/task/%s/complete", baseURL, url.PathEscape(s.projectID), url.PathEscape(taskID)),
+		fmt.Sprintf("%s/task/%s/complete", baseURL, url.PathEscape(taskID)),
+	}
+
+	var lastError error
+	for _, requestURL := range requestURLs {
+		log.Printf("ticktick complete-task request: task=%s endpoint=%s", taskID, requestURL)
+
+		_, err = s.client.Do(ctx, Request{
+			Service: "ticktick",
+			Method:  http.MethodPost,
+			URL:     requestURL,
+			Headers: map[string]string{
+				"Accept":        "application/json",
+				"Authorization": "Bearer " + accessToken,
+			},
+		})
+		if err == nil {
+			lastError = nil
+			break
+		}
+
+		var statusError HTTPStatusError
+		if errors.As(err, &statusError) && statusError.StatusCode == http.StatusNotFound {
+			lastError = err
+			continue
+		}
+
+		log.Printf("ticktick complete-task request failed: task=%s err=%v", taskID, err)
+		return err
+	}
+
+	if lastError != nil {
+		log.Printf("ticktick complete-task request failed on all endpoints: task=%s err=%v", taskID, lastError)
+		return lastError
+	}
+
+	if s.repository != nil {
+		if err := s.repository.MarkTaskCompleted(ctx, taskID); err != nil {
+			log.Printf("ticktick local cache complete-task update failed: task=%s err=%v", taskID, err)
+			return err
+		}
+	}
+
+	log.Printf("ticktick complete-task completed: task=%s", taskID)
+	return nil
+}
+
 func parseTickTickDueDate(value string) (time.Time, bool, error) {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
@@ -174,4 +253,121 @@ func parseTickTickDueDate(value string) (time.Time, bool, error) {
 
 func tickTickCompleted(status int) bool {
 	return status != 0
+}
+
+func extractTickTickTasks(value any) []tickTickTaskDTO {
+	switch typed := value.(type) {
+	case map[string]any:
+		if rawTasks, ok := typed["tasks"]; ok {
+			if tasks, ok := extractTickTickTasksFromArray(rawTasks); ok {
+				return tasks
+			}
+		}
+
+		for _, nested := range typed {
+			tasks := extractTickTickTasks(nested)
+			if len(tasks) > 0 {
+				return tasks
+			}
+		}
+
+		return nil
+	case []any:
+		for _, nested := range typed {
+			tasks := extractTickTickTasks(nested)
+			if len(tasks) > 0 {
+				return tasks
+			}
+		}
+
+		return nil
+	default:
+		return nil
+	}
+}
+
+func extractTickTickTasksFromArray(value any) ([]tickTickTaskDTO, bool) {
+	array, ok := value.([]any)
+	if !ok {
+		return nil, false
+	}
+
+	tasks := make([]tickTickTaskDTO, 0, len(array))
+	for _, item := range array {
+		entry, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		id := mapStringValue(entry, "id")
+		title := mapStringValue(entry, "title")
+		if strings.TrimSpace(id) == "" && strings.TrimSpace(title) == "" {
+			continue
+		}
+
+		tasks = append(tasks, tickTickTaskDTO{
+			ID:      id,
+			Title:   title,
+			DueDate: mapStringValue(entry, "dueDate"),
+			Status:  mapIntValue(entry, "status"),
+		})
+	}
+
+	return tasks, true
+}
+
+func mapStringValue(entry map[string]any, key string) string {
+	value, ok := entry[key]
+	if !ok || value == nil {
+		return ""
+	}
+
+	switch typed := value.(type) {
+	case string:
+		return strings.TrimSpace(typed)
+	case float64:
+		if typed == float64(int64(typed)) {
+			return strconv.FormatInt(int64(typed), 10)
+		}
+		return strconv.FormatFloat(typed, 'f', -1, 64)
+	default:
+		return ""
+	}
+}
+
+func mapIntValue(entry map[string]any, key string) int {
+	value, ok := entry[key]
+	if !ok || value == nil {
+		return 0
+	}
+
+	switch typed := value.(type) {
+	case float64:
+		return int(typed)
+	case int:
+		return typed
+	case int64:
+		return int(typed)
+	case string:
+		parsed, err := strconv.Atoi(strings.TrimSpace(typed))
+		if err == nil {
+			return parsed
+		}
+		return 0
+	default:
+		return 0
+	}
+}
+
+func truncateTickTickBodyPreview(body []byte, maxLength int) string {
+	preview := strings.TrimSpace(string(body))
+	if len(preview) <= maxLength {
+		return preview
+	}
+
+	if maxLength <= 3 {
+		return preview[:maxLength]
+	}
+
+	return preview[:maxLength-3] + "..."
 }

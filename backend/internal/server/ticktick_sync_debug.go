@@ -31,7 +31,7 @@ func (s *Server) tickTickSyncNowHandler(w http.ResponseWriter, r *http.Request) 
 	now := time.Now().UTC()
 	dueTaskCount := 0
 	if s.tickTickRepository != nil {
-		tasks, err := s.tickTickRepository.ListTasksDueBetween(r.Context(), now, now.Add(24*time.Hour))
+		tasks, err := s.tickTickRepository.ListTasksDueBetween(r.Context(), now.Add(-24*time.Hour), now.Add(24*time.Hour))
 		if err != nil {
 			http.Error(w, "ticktick sync completed but due-task query failed", http.StatusBadGateway)
 			return

@@ -111,6 +111,28 @@ export async function loadDailyOperations(fetchFn: FetchFn = fetch): Promise<Dai
     };
 }
 
+export async function completeTickTickTask(taskId: string, fetchFn: FetchFn = fetch): Promise<void> {
+    const normalizedTaskId = taskId.trim();
+    if (normalizedTaskId === '') {
+        throw new Error('taskId is required');
+    }
+
+    const response = await fetchFn(`${apiBaseURL()}/api/ticktick/tasks/complete`, {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ taskId: normalizedTaskId }),
+    });
+
+    if (!response.ok) {
+        const responseText = await response.text();
+        const message = responseText.trim() || response.statusText;
+        throw new Error(`/api/ticktick/tasks/complete failed (${response.status}): ${message}`);
+    }
+}
+
 function toStatusAlert(alert: RawStatusAlert): StatusAlert {
     return {
         id: String(alert.id ?? ''),

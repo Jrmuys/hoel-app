@@ -46,6 +46,7 @@ func New(address string, readTimeout, writeTimeout time.Duration, allowedOrigins
 	mux.HandleFunc("/api/daily-operations", server.dailyOperationsHandler)
 	mux.HandleFunc("/api/ticktick/oauth/start", server.tickTickOAuthStartHandler)
 	mux.HandleFunc("/api/ticktick/oauth/callback", server.tickTickOAuthCallbackHandler)
+	mux.HandleFunc("/api/ticktick/tasks/complete", server.tickTickCompleteTaskHandler)
 	mux.HandleFunc("/api/debug/ticktick-projects", server.tickTickProjectsHandler)
 	mux.HandleFunc("/api/debug/ticktick-sync-now", server.tickTickSyncNowHandler)
 	handler := newCORSSettings(allowedOrigins).wrap(mux)
