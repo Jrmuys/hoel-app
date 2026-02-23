@@ -85,6 +85,7 @@ func main() {
 		monitoringRepository,
 		pghRepository,
 		tickTickRepository,
+		tickTickService,
 		integrationClient,
 		tickTickOAuth,
 		cfg.TickTickAPIRoot,

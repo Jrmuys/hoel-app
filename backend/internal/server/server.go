@@ -16,6 +16,7 @@ type Server struct {
 	monitoring         *db.MonitoringRepository
 	pghRepository      *db.PGHRepository
 	tickTickRepository *db.TickTickRepository
+	tickTickService    *integration.TickTickService
 	integrationClient  *integration.Client
 	tickTickOAuth      *integration.TickTickOAuthService
 	tickTickAPIRoot    string
@@ -28,12 +29,13 @@ type healthResponse struct {
 	Timestamp string `json:"timestamp"`
 }
 
-func New(address string, readTimeout, writeTimeout time.Duration, allowedOrigins []string, monitoring *db.MonitoringRepository, pghRepository *db.PGHRepository, tickTickRepository *db.TickTickRepository, integrationClient *integration.Client, tickTickOAuth *integration.TickTickOAuthService, tickTickAPIRoot string) *Server {
+func New(address string, readTimeout, writeTimeout time.Duration, allowedOrigins []string, monitoring *db.MonitoringRepository, pghRepository *db.PGHRepository, tickTickRepository *db.TickTickRepository, tickTickService *integration.TickTickService, integrationClient *integration.Client, tickTickOAuth *integration.TickTickOAuthService, tickTickAPIRoot string) *Server {
 	mux := http.NewServeMux()
 	server := &Server{
 		monitoring:         monitoring,
 		pghRepository:      pghRepository,
 		tickTickRepository: tickTickRepository,
+		tickTickService:    tickTickService,
 		integrationClient:  integrationClient,
 		tickTickOAuth:      tickTickOAuth,
 		tickTickAPIRoot:    tickTickAPIRoot,
@@ -45,6 +47,7 @@ func New(address string, readTimeout, writeTimeout time.Duration, allowedOrigins
 	mux.HandleFunc("/api/ticktick/oauth/start", server.tickTickOAuthStartHandler)
 	mux.HandleFunc("/api/ticktick/oauth/callback", server.tickTickOAuthCallbackHandler)
 	mux.HandleFunc("/api/debug/ticktick-projects", server.tickTickProjectsHandler)
+	mux.HandleFunc("/api/debug/ticktick-sync-now", server.tickTickSyncNowHandler)
 	handler := newCORSSettings(allowedOrigins).wrap(mux)
 
 	server.httpServer = &http.Server{
