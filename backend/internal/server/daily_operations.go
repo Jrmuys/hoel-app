@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -55,6 +56,10 @@ func (s *Server) dailyOperationsHandler(w http.ResponseWriter, r *http.Request) 
 		endOfToday := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, int(time.Second-time.Nanosecond), time.UTC)
 
 		for _, task := range tasks {
+			if s.tickTickShoppingProject != "" && strings.EqualFold(task.SourceProject, s.tickTickShoppingProject) {
+				continue
+			}
+
 			isDailyTask := tickTickTaskHasTag(task.Tags, s.tickTickDailyTag)
 			isDueTodayOrOverdue := !task.DueAt.After(endOfToday)
 			if !isDailyTask && !isDueTodayOrOverdue {

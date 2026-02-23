@@ -144,6 +144,21 @@ export async function loadLogisticsPlanning(
     };
 }
 
+export async function forceRefreshTickTick(fetchFn: FetchFn = fetch): Promise<void> {
+    const response = await fetchFn(`${apiBaseURL()}/api/debug/ticktick-sync-now`, {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+        },
+    });
+
+    if (!response.ok) {
+        const responseText = await response.text();
+        const message = responseText.trim() || response.statusText;
+        throw new Error(`/api/debug/ticktick-sync-now failed (${response.status}): ${message}`);
+    }
+}
+
 export async function completeTickTickTask(taskId: string, fetchFn: FetchFn = fetch): Promise<void> {
     const normalizedTaskId = taskId.trim();
     if (normalizedTaskId === '') {

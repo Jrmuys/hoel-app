@@ -176,8 +176,12 @@ func (s *TickTickService) loadProjectTasks(ctx context.Context, accessToken, pro
 			return nil, 0, fmt.Errorf("parse ticktick due date for task %s: %w", task.ID, err)
 		}
 		if !ok {
-			skippedWithoutDueDate++
-			continue
+			if strings.EqualFold(projectID, s.shoppingProjectID) {
+				dueAt = time.Time{}
+			} else {
+				skippedWithoutDueDate++
+				continue
+			}
 		}
 
 		tasks = append(tasks, db.TickTickTask{

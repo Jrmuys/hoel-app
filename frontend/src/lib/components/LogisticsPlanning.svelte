@@ -36,7 +36,7 @@
 
     <div class="mt-4 grid gap-3 sm:grid-cols-2">
         <div
-            class="rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 p-3"
+            class="rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 p-3 transition-colors duration-150 hover:bg-[var(--color-background)]/55"
         >
             <p
                 class="text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70"
@@ -51,14 +51,10 @@
                 <ul class="mt-2 space-y-1.5">
                     {#each data.shoppingTasks as task}
                         {@const typedTask = task as DailyTask}
-                        <li class="text-sm">
+                        <li
+                            class="rounded-md px-1.5 py-1 text-sm transition-colors duration-150 hover:bg-[var(--color-background)]/55"
+                        >
                             <span class="font-medium">{typedTask.title}</span>
-                            <span class="text-[var(--color-text)]/70">
-                                • {formatDueDate(
-                                    typedTask.dueAt,
-                                    typedTask.hasTime,
-                                )}
-                            </span>
                         </li>
                     {/each}
                 </ul>
@@ -66,7 +62,7 @@
         </div>
 
         <div
-            class="rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 p-3"
+            class="rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 p-3 transition-colors duration-150 hover:bg-[var(--color-background)]/55"
         >
             <p
                 class="text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70"
@@ -81,7 +77,9 @@
                 <ul class="mt-2 space-y-1.5">
                     {#each data.maintenanceTasks as task}
                         {@const typedTask = task as DailyTask}
-                        <li class="text-sm">
+                        <li
+                            class="rounded-md px-1.5 py-1 text-sm transition-colors duration-150 hover:bg-[var(--color-background)]/55"
+                        >
                             <span class="font-medium">{typedTask.title}</span>
                             <span class="text-[var(--color-text)]/70">
                                 • {formatDueDate(

@@ -44,7 +44,7 @@
         <div class="mt-5 grid gap-3 sm:grid-cols-2">
             {#each data.integrations as integration}
                 <div
-                    class="rounded-xl border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 p-3"
+                    class="rounded-xl border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 p-3 transition-colors duration-150 hover:bg-[var(--color-background)]/55"
                 >
                     <div class="flex items-center justify-between gap-3">
                         <p class="text-sm font-semibold capitalize">

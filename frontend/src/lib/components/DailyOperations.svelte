@@ -9,6 +9,7 @@
     import {
         completeTickTickTask,
         createTickTickTask,
+        forceRefreshTickTick,
         loadDailyOperations,
         updateTickTickTask,
     } from '$lib/api/dashboard';
@@ -32,6 +33,7 @@
     let viewData: DailyOperationsModel = EMPTY_DAILY_OPERATIONS;
     let completingTaskId = '';
     let completionError = '';
+    let isRefreshing = false;
     let mutatingTaskId = '';
     let mutationError = '';
     let newTaskTitle = '';
@@ -75,6 +77,28 @@
         };
     }
 
+    async function handleForceRefresh() {
+        if (isRefreshing || mutatingTaskId !== '' || completingTaskId !== '') {
+            return;
+        }
+
+        isRefreshing = true;
+        mutationError = '';
+
+        try {
+            await forceRefreshTickTick();
+            const latest = await loadDailyOperations();
+            viewData = cloneDailyOperations(latest);
+        } catch (error) {
+            mutationError =
+                error instanceof Error
+                    ? error.message
+                    : 'Unable to force refresh tasks right now.';
+        } finally {
+            isRefreshing = false;
+        }
+    }
+
     $: if (data) {
         viewData = cloneDailyOperations(data);
     }
@@ -105,6 +129,20 @@
             value.getSeconds() !== 0 ||
             value.getMilliseconds() !== 0
         );
+    }
+
+    function isTaskOverdue(task: DailyTask): boolean {
+        const parsed = new Date(task.dueAt);
+        if (Number.isNaN(parsed.getTime())) {
+            return false;
+        }
+
+        const now = new Date();
+        if (task.hasTime) {
+            return parsed.getTime() < now.getTime();
+        }
+
+        return dayDifferenceFromToday(parsed) < 0;
     }
 
     function formatDate(
@@ -518,30 +556,42 @@
                 Priority tasks for the next 24 hours
             </p>
         </div>
-        <div class="flex flex-wrap gap-2">
-            {#if viewData.garbage.showTrashTakeOutReminder}
-                <span
-                    class="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--color-primary)]"
-                >
-                    <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
-                    Take out trash tonight
-                </span>
-            {/if}
-            {#if viewData.garbage.showRecyclingTakeOutReminder}
-                <span
-                    class="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--color-primary)]"
-                >
-                    <Recycle size={14} strokeWidth={2} aria-hidden="true" />
-                    Take out recycling tonight
-                </span>
-            {/if}
-            {#if !viewData.garbage.showTrashTakeOutReminder && !viewData.garbage.showRecyclingTakeOutReminder}
-                <span
-                    class="rounded-full border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 px-3 py-1 text-xs font-medium text-[var(--color-text)]/70"
-                >
-                    No pickup scheduled in the next 24 hours
-                </span>
-            {/if}
+        <div class="flex flex-col items-start gap-2 sm:items-end">
+            <button
+                type="button"
+                class="inline-flex h-9 items-center rounded-lg border border-[var(--color-secondary)]/40 px-3 text-sm"
+                onclick={handleForceRefresh}
+                disabled={isRefreshing ||
+                    mutatingTaskId !== '' ||
+                    completingTaskId !== ''}
+            >
+                {isRefreshing ? 'Refreshing…' : 'Force Refresh'}
+            </button>
+            <div class="flex flex-wrap gap-2 sm:justify-end">
+                {#if viewData.garbage.showTrashTakeOutReminder}
+                    <span
+                        class="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--color-primary)]"
+                    >
+                        <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
+                        Take out trash tonight
+                    </span>
+                {/if}
+                {#if viewData.garbage.showRecyclingTakeOutReminder}
+                    <span
+                        class="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--color-primary)]"
+                    >
+                        <Recycle size={14} strokeWidth={2} aria-hidden="true" />
+                        Take out recycling tonight
+                    </span>
+                {/if}
+                {#if !viewData.garbage.showTrashTakeOutReminder && !viewData.garbage.showRecyclingTakeOutReminder}
+                    <span
+                        class="rounded-full border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 px-3 py-1 text-xs font-medium text-[var(--color-text)]/70"
+                    >
+                        No pickup scheduled in the next 24 hours
+                    </span>
+                {/if}
+            </div>
         </div>
     </header>
 
@@ -605,7 +655,7 @@
                 </button>
                 <input
                     type="time"
-                    class="native-time h-10 rounded-lg border border-[var(--color-secondary)]/30 bg-transparent pl-2.5 pr-3 text-sm w-32"
+                    class="native-time h-10 w-24 rounded-lg border border-[var(--color-secondary)]/30 bg-transparent pl-2 pr-1.5 text-sm"
                     bind:value={newTaskTime}
                     disabled={mutatingTaskId !== ''}
                 />
@@ -674,7 +724,7 @@
                         <div class="mt-2 grid grid-cols-7 gap-1">
                             {#each calendarDays() as day}
                                 {#if day === null}
-                                    <span class="h-8" />
+                                    <span class="h-8"></span>
                                 {:else}
                                     <button
                                         type="button"
@@ -705,7 +755,7 @@
                 type="button"
                 class="inline-flex h-10 items-center rounded-lg border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-3 text-sm font-medium text-[var(--color-primary)]"
                 onclick={handleCreateTask}
-                disabled={mutatingTaskId !== ''}
+                disabled={isRefreshing || mutatingTaskId !== ''}
             >
                 Add
             </button>
@@ -713,11 +763,13 @@
     </div>
 
     {#if viewData.tasks.length > 0}
-        <ul class="mt-5 space-y-2">
+        <ul
+            class="mt-5 overflow-hidden rounded-xl border border-[var(--color-secondary)]/25 divide-y divide-[var(--color-secondary)]/25"
+        >
             {#each viewData.tasks as task}
                 {@const typedTask = task as DailyTask}
                 <li
-                    class={`flex gap-2 rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 px-2.5 py-2.5 ${editingTaskId === typedTask.id ? 'items-start' : 'items-center'}`}
+                    class={`flex gap-2 bg-[var(--color-background)]/35 px-2.5 py-2.5 transition-colors duration-150 hover:bg-[var(--color-background)]/55 ${editingTaskId === typedTask.id ? 'items-start' : 'items-center'}`}
                 >
                     <input
                         type="checkbox"
@@ -744,7 +796,7 @@
                                 />
                                 <input
                                     type="time"
-                                    class="native-time h-8 w-32 rounded-lg border border-[var(--color-secondary)]/30 bg-transparent pl-2.5 pr-3 text-sm"
+                                    class="native-time h-8 w-24 rounded-lg border border-[var(--color-secondary)]/30 bg-transparent pl-2 pr-1.5 text-sm"
                                     bind:value={editTaskTime}
                                     disabled={mutatingTaskId !== ''}
                                 />
@@ -847,7 +899,8 @@
                                             >
                                                 {#each calendarDays() as day}
                                                     {#if day === null}
-                                                        <span class="h-8" />
+                                                        <span class="h-8"
+                                                        ></span>
                                                     {:else}
                                                         <button
                                                             type="button"
@@ -910,7 +963,12 @@
                                 <span
                                     class="text-xs text-[var(--color-text)]/70"
                                 >
-                                    • Due {formatDate(typedTask.dueAt, {
+                                    •
+                                </span>
+                                <span
+                                    class={`text-xs ${isTaskOverdue(typedTask) ? 'text-[var(--color-error)]' : 'text-[var(--color-text)]/70'}`}
+                                >
+                                    Due {formatDate(typedTask.dueAt, {
                                         includeTimeForToday: true,
                                         hasTime: typedTask.hasTime,
                                     })}
@@ -970,14 +1028,14 @@
     }
 
     :global(.native-time::-webkit-datetime-edit) {
-        padding: 0 0.1rem 0 0;
+        padding: 0;
     }
 
     :global(.native-time::-webkit-datetime-edit-fields-wrapper) {
         padding: 0;
         display: inline-flex;
         align-items: center;
-        gap: 0.08rem;
+        gap: 0;
     }
 
     :global(.native-time::-webkit-datetime-edit-hour-field),
@@ -1009,9 +1067,9 @@
         filter: brightness(0) invert(1);
         opacity: 1;
         cursor: pointer;
-        margin: 0;
+        margin: 0 0 0 0.1rem;
         padding: 0;
-        width: 0.8rem;
+        width: 0.72rem;
     }
 
     :global(.task-checkbox) {

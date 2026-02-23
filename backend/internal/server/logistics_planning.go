@@ -29,10 +29,15 @@ func (s *Server) logisticsPlanningHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	for _, task := range tasks {
+		dueAt := ""
+		if !task.DueAt.IsZero() {
+			dueAt = task.DueAt.UTC().Format(timeLayoutRFC3339)
+		}
+
 		responseTask := dailyTaskResponse{
 			ID:        task.ID,
 			Title:     task.Title,
-			DueAt:     task.DueAt.UTC().Format(timeLayoutRFC3339),
+			DueAt:     dueAt,
 			HasTime:   task.HasTime,
 			Completed: task.Completed,
 			Source:    "ticktick",
