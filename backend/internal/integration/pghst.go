@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -81,6 +82,8 @@ func (s *PGHService) SyncOnce(ctx context.Context) error {
 		return err
 	}
 
+	log.Printf("pghst parse input status=%d body=%q", response.StatusCode, truncateBodyPreview(response.Body, 600))
+
 	payload, err := parsePGHPayload(response.Body)
 	if err != nil {
 		if s.client.monitoring != nil {
@@ -90,10 +93,29 @@ func (s *PGHService) SyncOnce(ctx context.Context) error {
 		return err
 	}
 
+	log.Printf(
+		"pghst parsed payload next_pickup_date=%q pickup_date=%q next_recycling_date=%q recycling_date=%q next_collection_date=%q collection_type=%q updated_at=%q",
+		payload.NextPickupDate,
+		payload.PickupDate,
+		payload.NextRecyclingDate,
+		payload.RecyclingDate,
+		payload.NextCollection,
+		payload.CollectionType,
+		payload.UpdatedAt,
+	)
+
 	schedule, err := s.toSchedule(payload)
 	if err != nil {
 		return err
 	}
+
+	log.Printf(
+		"pghst parsed schedule next_pickup=%s next_recycling=%s is_recycling_week=%t show_indicator=%t",
+		schedule.NextPickupDate.UTC().Format(time.RFC3339),
+		formatOptionalTime(schedule.NextRecyclingDate),
+		schedule.IsRecyclingWeek,
+		schedule.ShowIndicator,
+	)
 
 	if err := s.repository.UpsertSchedule(ctx, schedule); err != nil {
 		return err
@@ -229,6 +251,14 @@ func truncateBodyPreview(body []byte, maxLength int) string {
 	}
 
 	return preview[:maxLength-3] + "..."
+}
+
+func formatOptionalTime(value *time.Time) string {
+	if value == nil {
+		return ""
+	}
+
+	return value.UTC().Format(time.RFC3339)
 }
 
 func (s *PGHService) toSchedule(payload pghPayload) (db.PGHSchedule, error) {
