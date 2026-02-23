@@ -63,6 +63,7 @@ interface RawDailyTask {
     id?: string;
     title?: string;
     dueAt?: string;
+    hasTime?: boolean;
     completed?: boolean;
     source?: string;
 }
@@ -95,6 +96,7 @@ export async function loadDailyOperations(fetchFn: FetchFn = fetch): Promise<Dai
             id: task.id ?? '',
             title: task.title ?? 'Untitled task',
             dueAt: task.dueAt ?? new Date().toISOString(),
+            hasTime: task.hasTime !== false,
             completed: Boolean(task.completed),
             source: toTaskSource(task.source),
         })),

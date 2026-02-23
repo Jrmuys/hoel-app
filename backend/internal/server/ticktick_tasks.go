@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -32,6 +33,23 @@ type tickTickUpdateTaskRequest struct {
 	TaskID string `json:"taskId"`
 	Title  string `json:"title"`
 	DueAt  string `json:"dueAt"`
+}
+
+func parseTickTickDueAtInput(raw string) (time.Time, bool, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return time.Time{}, false, fmt.Errorf("dueAt is required")
+	}
+
+	if parsed, err := time.Parse(time.RFC3339, trimmed); err == nil {
+		return parsed, true, nil
+	}
+
+	if parsed, err := time.ParseInLocation("2006-01-02", trimmed, time.Local); err == nil {
+		return parsed.UTC(), false, nil
+	}
+
+	return time.Time{}, false, fmt.Errorf("invalid dueAt format")
 }
 
 type tickTickUpdateTaskResponse struct {
@@ -103,13 +121,13 @@ func (s *Server) tickTickCreateTaskHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	dueAt, err := time.Parse(time.RFC3339, strings.TrimSpace(request.DueAt))
+	dueAt, hasTime, err := parseTickTickDueAtInput(request.DueAt)
 	if err != nil {
-		http.Error(w, "dueAt must be RFC3339", http.StatusBadRequest)
+		http.Error(w, "dueAt must be RFC3339 or YYYY-MM-DD", http.StatusBadRequest)
 		return
 	}
 
-	taskID, err := s.tickTickService.CreateTask(r.Context(), title, dueAt)
+	taskID, err := s.tickTickService.CreateTask(r.Context(), title, dueAt, hasTime)
 	if err != nil {
 		http.Error(w, "unable to create ticktick task", http.StatusBadGateway)
 		return
@@ -156,13 +174,13 @@ func (s *Server) tickTickUpdateTaskHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	dueAt, err := time.Parse(time.RFC3339, strings.TrimSpace(request.DueAt))
+	dueAt, hasTime, err := parseTickTickDueAtInput(request.DueAt)
 	if err != nil {
-		http.Error(w, "dueAt must be RFC3339", http.StatusBadRequest)
+		http.Error(w, "dueAt must be RFC3339 or YYYY-MM-DD", http.StatusBadRequest)
 		return
 	}
 
-	if err := s.tickTickService.UpdateTask(r.Context(), taskID, title, dueAt); err != nil {
+	if err := s.tickTickService.UpdateTask(r.Context(), taskID, title, dueAt, hasTime); err != nil {
 		http.Error(w, "unable to update ticktick task", http.StatusBadGateway)
 		return
 	}

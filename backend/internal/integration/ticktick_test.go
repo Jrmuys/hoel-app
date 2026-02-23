@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,6 +14,134 @@ import (
 
 	_ "modernc.org/sqlite"
 )
+
+func TestCreateTask_SendsTickTickDueDateFormat(t *testing.T) {
+	database := newTickTickTestDatabase(t)
+	repository := db.NewTickTickRepository(database)
+
+	type capturedRequest struct {
+		ProjectID string `json:"projectId"`
+		Title     string `json:"title"`
+		DueDate   string `json:"dueDate"`
+	}
+
+	var received capturedRequest
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/open/v1/task" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"created-task"}`))
+	}))
+	defer server.Close()
+
+	client := NewClient(2*time.Second, 0, 10*time.Millisecond, nil)
+	oauth := NewTickTickOAuthService(client, nil, "", "", "", "", "", "static-token")
+	service := NewTickTickService(client, repository, oauth, server.URL+"/open/v1", "project-1", time.Minute)
+
+	dueAt := time.Date(2026, time.February, 22, 16, 30, 0, 0, time.UTC)
+	_, err := service.CreateTask(context.Background(), "Test create", dueAt, true)
+	if err != nil {
+		t.Fatalf("create task returned error: %v", err)
+	}
+
+	if received.ProjectID != "project-1" {
+		t.Fatalf("unexpected project id: got=%q", received.ProjectID)
+	}
+
+	if received.DueDate != "2026-02-22T16:30:00.000+0000" {
+		t.Fatalf("unexpected due date format: got=%q", received.DueDate)
+	}
+}
+
+func TestUpdateTask_SendsTickTickDueDateFormat(t *testing.T) {
+	database := newTickTickTestDatabase(t)
+	repository := db.NewTickTickRepository(database)
+
+	type capturedRequest struct {
+		Title   string `json:"title"`
+		DueDate string `json:"dueDate"`
+	}
+
+	var received capturedRequest
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/open/v1/task/task-123" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client := NewClient(2*time.Second, 0, 10*time.Millisecond, nil)
+	oauth := NewTickTickOAuthService(client, nil, "", "", "", "", "", "static-token")
+	service := NewTickTickService(client, repository, oauth, server.URL+"/open/v1", "project-1", time.Minute)
+
+	dueAt := time.Date(2026, time.February, 23, 8, 45, 0, 0, time.UTC)
+	err := service.UpdateTask(context.Background(), "task-123", "Test update", dueAt, true)
+	if err != nil {
+		t.Fatalf("update task returned error: %v", err)
+	}
+
+	if received.DueDate != "2026-02-23T08:45:00.000+0000" {
+		t.Fatalf("unexpected due date format: got=%q", received.DueDate)
+	}
+}
+
+func TestCreateTask_SendsDateOnlyWhenTimeNotSet(t *testing.T) {
+	database := newTickTickTestDatabase(t)
+	repository := db.NewTickTickRepository(database)
+
+	type capturedRequest struct {
+		DueDate string `json:"dueDate"`
+		AllDay  bool   `json:"allDay"`
+	}
+
+	var received capturedRequest
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/open/v1/task" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"created-task"}`))
+	}))
+	defer server.Close()
+
+	client := NewClient(2*time.Second, 0, 10*time.Millisecond, nil)
+	oauth := NewTickTickOAuthService(client, nil, "", "", "", "", "", "static-token")
+	service := NewTickTickService(client, repository, oauth, server.URL+"/open/v1", "project-1", time.Minute)
+
+	dueAt := time.Date(2026, time.February, 22, 0, 0, 0, 0, time.Local)
+	_, err := service.CreateTask(context.Background(), "All-day", dueAt, false)
+	if err != nil {
+		t.Fatalf("create task returned error: %v", err)
+	}
+
+	if !strings.Contains(received.DueDate, "T00:00:00.000") {
+		t.Fatalf("unexpected all-day due date format: got=%q", received.DueDate)
+	}
+
+	if !received.AllDay {
+		t.Fatalf("expected allDay=true for date-only task")
+	}
+}
 
 func TestCompleteTask_UsesProjectEndpointFirst(t *testing.T) {
 	database := newTickTickTestDatabase(t)
@@ -137,6 +266,7 @@ func newTickTickTestDatabase(t *testing.T) *sql.DB {
 			task_id TEXT PRIMARY KEY,
 			title TEXT NOT NULL,
 			due_at TEXT NOT NULL,
+			has_time INTEGER NOT NULL DEFAULT 1,
 			completed INTEGER NOT NULL DEFAULT 0,
 			source_project TEXT NOT NULL,
 			updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -157,8 +287,8 @@ func insertPendingTask(t *testing.T, database *sql.DB, taskID string) {
 	t.Helper()
 
 	_, err := database.Exec(`
-		INSERT INTO ticktick_task_cache (task_id, title, due_at, completed, source_project, updated_at)
-		VALUES (?, ?, ?, 0, ?, CURRENT_TIMESTAMP);
+		INSERT INTO ticktick_task_cache (task_id, title, due_at, has_time, completed, source_project, updated_at)
+		VALUES (?, ?, ?, 1, 0, ?, CURRENT_TIMESTAMP);
 	`, taskID, "Test Task", time.Now().UTC().Format(time.RFC3339), "project-1")
 	if err != nil {
 		t.Fatalf("insert pending task: %v", err)

@@ -24,6 +24,7 @@ export interface DailyTask {
     id: string;
     title: string;
     dueAt: string;
+    hasTime: boolean;
     completed: boolean;
     source: 'ticktick' | 'system';
 }

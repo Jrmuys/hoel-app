@@ -1,0 +1,2 @@
+ALTER TABLE ticktick_task_cache
+ADD COLUMN has_time BOOLEAN NOT NULL DEFAULT 1;

@@ -1,5 +1,11 @@
 <script lang="ts">
-    import { Recycle, Trash2 } from 'lucide-svelte';
+    import {
+        Calendar,
+        ChevronLeft,
+        ChevronRight,
+        Recycle,
+        Trash2,
+    } from 'lucide-svelte';
     import {
         completeTickTickTask,
         createTickTickTask,
@@ -29,10 +35,36 @@
     let mutatingTaskId = '';
     let mutationError = '';
     let newTaskTitle = '';
-    let newTaskDueAt = defaultDueAtInputValue();
+    let newTaskDate = defaultDateInputValue();
+    let newTaskTime = defaultTimeInputValue();
     let editingTaskId = '';
     let editTaskTitle = '';
-    let editTaskDueAt = '';
+    let editTaskDate = '';
+    let editTaskTime = '';
+    let pickerTarget: 'new' | 'edit' | '' = '';
+    let pickerMonth = new Date();
+    const weekdayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    const monthLabels = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+    ];
+    const quickDateOptions: Array<{ label: string; offset: number }> = [
+        { label: 'Today', offset: 0 },
+        { label: 'Tomorrow', offset: 1 },
+        { label: 'Next week', offset: 7 },
+    ];
+    let newPickerContainer: HTMLDivElement | undefined;
+    let editPickerContainer: HTMLDivElement | undefined;
 
     function cloneDailyOperations(
         source: DailyOperationsModel,
@@ -47,8 +79,83 @@
         viewData = cloneDailyOperations(data);
     }
 
-    function formatDate(dateIso: string): string {
-        return new Date(dateIso).toLocaleDateString(undefined, {
+    function startOfDay(value: Date): Date {
+        return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    }
+
+    function dayDifferenceFromToday(value: Date): number {
+        const todayStart = startOfDay(new Date());
+        const valueStart = startOfDay(value);
+        const millisecondsPerDay = 24 * 60 * 60 * 1000;
+        return Math.round(
+            (valueStart.getTime() - todayStart.getTime()) / millisecondsPerDay,
+        );
+    }
+
+    function startOfWeek(value: Date): Date {
+        const start = startOfDay(value);
+        start.setDate(start.getDate() - start.getDay());
+        return start;
+    }
+
+    function hasMeaningfulTime(value: Date): boolean {
+        return (
+            value.getHours() !== 0 ||
+            value.getMinutes() !== 0 ||
+            value.getSeconds() !== 0 ||
+            value.getMilliseconds() !== 0
+        );
+    }
+
+    function formatDate(
+        dateIso: string,
+        options: { includeTimeForToday?: boolean; hasTime?: boolean } = {},
+    ): string {
+        const parsed = new Date(dateIso);
+        if (Number.isNaN(parsed.getTime())) {
+            return 'Invalid date';
+        }
+
+        const dayDifference = dayDifferenceFromToday(parsed);
+        if (dayDifference === 0) {
+            const shouldShowTime = options.hasTime ?? hasMeaningfulTime(parsed);
+            if (options.includeTimeForToday && shouldShowTime) {
+                return `Today at ${parsed.toLocaleTimeString(undefined, {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                })}`;
+            }
+
+            return 'Today';
+        }
+        if (dayDifference === 1) {
+            return 'Tomorrow';
+        }
+        if (dayDifference === -1) {
+            return 'Yesterday';
+        }
+
+        const parsedStart = startOfDay(parsed);
+        const today = new Date();
+        const currentWeekStart = startOfWeek(today);
+        const nextWeekStart = new Date(currentWeekStart);
+        nextWeekStart.setDate(nextWeekStart.getDate() + 7);
+        const weekAfterNextStart = new Date(nextWeekStart);
+        weekAfterNextStart.setDate(weekAfterNextStart.getDate() + 7);
+
+        const weekdayName = parsed.toLocaleDateString(undefined, {
+            weekday: 'long',
+        });
+
+        if (parsedStart >= currentWeekStart && parsedStart < nextWeekStart) {
+            return weekdayName;
+        }
+
+        if (parsedStart >= nextWeekStart && parsedStart < weekAfterNextStart) {
+            return `next ${weekdayName}`;
+        }
+
+        return parsed.toLocaleDateString(undefined, {
             weekday: 'short',
             month: 'short',
             day: 'numeric',
@@ -63,41 +170,230 @@
         return formatDate(dateIso);
     }
 
-    function defaultDueAtInputValue(): string {
+    function defaultDateInputValue(): string {
         const now = new Date();
-        now.setMinutes(0, 0, 0);
-        now.setHours(now.getHours() + 1);
-        return toLocalDateTimeInputValue(now.toISOString());
+        return toDateInputValue(now);
     }
 
-    function toLocalDateTimeInputValue(dateIso: string): string {
-        if (!dateIso) {
-            return '';
-        }
-
-        const date = new Date(dateIso);
-        if (Number.isNaN(date.getTime())) {
-            return '';
-        }
-
-        const localTime = new Date(
-            date.getTime() - date.getTimezoneOffset() * 60_000,
-        );
-        return localTime.toISOString().slice(0, 16);
+    function defaultTimeInputValue(): string {
+        return '';
     }
 
-    function toISOFromDateTimeInput(value: string): string {
-        const trimmed = value.trim();
-        if (trimmed === '') {
+    function toDateInputValue(value: Date): string {
+        const year = value.getFullYear();
+        const month = String(value.getMonth() + 1).padStart(2, '0');
+        const day = String(value.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function toDueAtPayload(dateValue: string, timeValue: string): string {
+        const normalizedDate = dateValue.trim();
+        if (normalizedDate === '') {
             return '';
         }
 
-        const localDate = new Date(trimmed);
+        const normalizedTime = timeValue.trim();
+        if (normalizedTime === '') {
+            return normalizedDate;
+        }
+
+        const dateTimeValue = `${normalizedDate}T${normalizedTime}`;
+
+        const localDate = new Date(dateTimeValue);
         if (Number.isNaN(localDate.getTime())) {
             return '';
         }
 
         return localDate.toISOString();
+    }
+
+    function formatDateControl(dateValue: string): string {
+        if (dateValue.trim() === '') {
+            return 'Pick date';
+        }
+
+        const localDate = new Date(`${dateValue}T00:00:00`);
+        if (Number.isNaN(localDate.getTime())) {
+            return 'Pick date';
+        }
+
+        return localDate.toLocaleDateString(undefined, {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+        });
+    }
+
+    function openPicker(target: 'new' | 'edit'): void {
+        pickerTarget = target;
+        const dateValue = target === 'new' ? newTaskDate : editTaskDate;
+        const baseDate = new Date(
+            `${dateValue || defaultDateInputValue()}T00:00:00`,
+        );
+        pickerMonth = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+    }
+
+    function closePicker(): void {
+        pickerTarget = '';
+    }
+
+    function appliesToOpenPicker(target: EventTarget | null): boolean {
+        if (!(target instanceof Node)) {
+            return false;
+        }
+
+        if (pickerTarget === 'new') {
+            return newPickerContainer?.contains(target) ?? false;
+        }
+
+        if (pickerTarget === 'edit') {
+            return editPickerContainer?.contains(target) ?? false;
+        }
+
+        return false;
+    }
+
+    function handleWindowMouseDown(event: MouseEvent): void {
+        if (pickerTarget === '') {
+            return;
+        }
+
+        if (!appliesToOpenPicker(event.target)) {
+            closePicker();
+        }
+    }
+
+    function handleWindowFocusIn(event: FocusEvent): void {
+        if (pickerTarget === '') {
+            return;
+        }
+
+        if (!appliesToOpenPicker(event.target)) {
+            closePicker();
+        }
+    }
+
+    function handleWindowKeyDown(event: KeyboardEvent): void {
+        if (event.key === 'Escape') {
+            closePicker();
+        }
+    }
+
+    function previousMonth(): void {
+        pickerMonth = new Date(
+            pickerMonth.getFullYear(),
+            pickerMonth.getMonth() - 1,
+            1,
+        );
+    }
+
+    function nextMonth(): void {
+        pickerMonth = new Date(
+            pickerMonth.getFullYear(),
+            pickerMonth.getMonth() + 1,
+            1,
+        );
+    }
+
+    function pickerYearOptions(): number[] {
+        const centerYear = pickerMonth.getFullYear();
+        return Array.from(
+            { length: 21 },
+            (_, index) => centerYear - 10 + index,
+        );
+    }
+
+    function setPickerMonthFromSelect(value: string): void {
+        const parsed = Number.parseInt(value, 10);
+        if (Number.isNaN(parsed)) {
+            return;
+        }
+
+        pickerMonth = new Date(pickerMonth.getFullYear(), parsed, 1);
+    }
+
+    function setPickerYearFromSelect(value: string): void {
+        const parsed = Number.parseInt(value, 10);
+        if (Number.isNaN(parsed)) {
+            return;
+        }
+
+        pickerMonth = new Date(parsed, pickerMonth.getMonth(), 1);
+    }
+
+    function setPickedDay(day: number): void {
+        const pickedDate = new Date(
+            pickerMonth.getFullYear(),
+            pickerMonth.getMonth(),
+            day,
+        );
+        const dateValue = toDateInputValue(pickedDate);
+
+        if (pickerTarget === 'new') {
+            newTaskDate = dateValue;
+        } else if (pickerTarget === 'edit') {
+            editTaskDate = dateValue;
+        }
+
+        closePicker();
+    }
+
+    function applyQuickDate(offsetDays: number): void {
+        const date = new Date();
+        date.setHours(0, 0, 0, 0);
+        date.setDate(date.getDate() + offsetDays);
+
+        const dateValue = toDateInputValue(date);
+        if (pickerTarget === 'new') {
+            newTaskDate = dateValue;
+        } else if (pickerTarget === 'edit') {
+            editTaskDate = dateValue;
+        }
+
+        pickerMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+        closePicker();
+    }
+
+    function calendarDays(): Array<number | null> {
+        const year = pickerMonth.getFullYear();
+        const month = pickerMonth.getMonth();
+        const firstDayOffset = new Date(year, month, 1).getDay();
+        const totalDays = new Date(year, month + 1, 0).getDate();
+
+        const days: Array<number | null> = [];
+        for (let index = 0; index < firstDayOffset; index += 1) {
+            days.push(null);
+        }
+        for (let day = 1; day <= totalDays; day += 1) {
+            days.push(day);
+        }
+
+        return days;
+    }
+
+    function selectedDayValue(): string {
+        if (pickerTarget === 'new') {
+            return newTaskDate;
+        }
+        if (pickerTarget === 'edit') {
+            return editTaskDate;
+        }
+
+        return '';
+    }
+
+    function isSelectedDay(day: number): boolean {
+        const selectedValue = selectedDayValue();
+        if (selectedValue === '') {
+            return false;
+        }
+
+        const selectedDate = new Date(`${selectedValue}T00:00:00`);
+        return (
+            selectedDate.getFullYear() === pickerMonth.getFullYear() &&
+            selectedDate.getMonth() === pickerMonth.getMonth() &&
+            selectedDate.getDate() === day
+        );
     }
 
     async function handleTaskCompletion(
@@ -144,7 +440,7 @@
         }
 
         mutationError = '';
-        const dueAtISO = toISOFromDateTimeInput(newTaskDueAt);
+        const dueAtISO = toDueAtPayload(newTaskDate, newTaskTime);
         if (newTaskTitle.trim() === '' || dueAtISO === '') {
             mutationError = 'Provide title and due date.';
             return;
@@ -155,7 +451,8 @@
             await createTickTickTask(newTaskTitle, dueAtISO);
             viewData = await loadDailyOperations();
             newTaskTitle = '';
-            newTaskDueAt = defaultDueAtInputValue();
+            newTaskDate = defaultDateInputValue();
+            newTaskTime = defaultTimeInputValue();
         } catch {
             mutationError = 'Unable to create task right now.';
         } finally {
@@ -166,14 +463,20 @@
     function startEditingTask(task: DailyTask): void {
         editingTaskId = task.id;
         editTaskTitle = task.title;
-        editTaskDueAt = toLocalDateTimeInputValue(task.dueAt);
+        const dueAt = new Date(task.dueAt);
+        editTaskDate = toDateInputValue(dueAt);
+        editTaskTime = task.hasTime
+            ? `${String(dueAt.getHours()).padStart(2, '0')}:${String(dueAt.getMinutes()).padStart(2, '0')}`
+            : '';
         mutationError = '';
     }
 
     function cancelEditingTask(): void {
         editingTaskId = '';
         editTaskTitle = '';
-        editTaskDueAt = '';
+        editTaskDate = '';
+        editTaskTime = '';
+        closePicker();
     }
 
     async function saveTaskEdit(taskID: string): Promise<void> {
@@ -182,7 +485,7 @@
         }
 
         mutationError = '';
-        const dueAtISO = toISOFromDateTimeInput(editTaskDueAt);
+        const dueAtISO = toDueAtPayload(editTaskDate, editTaskTime);
         if (editTaskTitle.trim() === '' || dueAtISO === '') {
             mutationError = 'Provide title and due date before saving.';
             return;
@@ -200,6 +503,12 @@
         }
     }
 </script>
+
+<svelte:window
+    onmousedown={handleWindowMouseDown}
+    onfocusin={handleWindowFocusIn}
+    onkeydown={handleWindowKeyDown}
+/>
 
 <section class="panel">
     <header class="flex flex-wrap items-start justify-between gap-3">
@@ -281,12 +590,117 @@
                 bind:value={newTaskTitle}
                 disabled={mutatingTaskId !== ''}
             />
-            <input
-                type="datetime-local"
-                class="rounded-lg border border-[var(--color-secondary)]/30 bg-transparent px-3 py-2 text-sm"
-                bind:value={newTaskDueAt}
-                disabled={mutatingTaskId !== ''}
-            />
+            <div
+                class="relative flex items-center gap-2"
+                bind:this={newPickerContainer}
+            >
+                <button
+                    type="button"
+                    class="inline-flex items-center gap-2 rounded-lg border border-[var(--color-secondary)]/30 bg-transparent px-3 py-2 text-sm"
+                    onclick={() => openPicker('new')}
+                    disabled={mutatingTaskId !== ''}
+                >
+                    <Calendar size={14} class="text-white" />
+                    {formatDateControl(newTaskDate)}
+                </button>
+                <input
+                    type="time"
+                    class="native-time h-10 rounded-lg border border-[var(--color-secondary)]/30 bg-transparent pl-2.5 pr-3 text-sm w-32"
+                    bind:value={newTaskTime}
+                    disabled={mutatingTaskId !== ''}
+                />
+
+                {#if pickerTarget === 'new'}
+                    <div
+                        class="absolute left-0 top-12 z-20 w-64 rounded-xl border border-[var(--color-secondary)]/35 bg-[var(--color-background)] p-3 shadow-lg"
+                    >
+                        <div class="mb-3 flex items-center justify-between">
+                            <button
+                                type="button"
+                                class="rounded p-1 text-[var(--color-text)]/80 hover:bg-[var(--color-primary)]/10"
+                                onclick={previousMonth}
+                            >
+                                <ChevronLeft size={14} />
+                            </button>
+                            <div class="flex items-center gap-1.5">
+                                <select
+                                    class="native-select rounded-md border border-[var(--color-secondary)]/30 bg-transparent px-1.5 py-1 pr-6 text-xs"
+                                    value={String(pickerMonth.getMonth())}
+                                    onchange={(event) =>
+                                        setPickerMonthFromSelect(
+                                            (
+                                                event.currentTarget as HTMLSelectElement
+                                            ).value,
+                                        )}
+                                >
+                                    {#each monthLabels as monthLabel, monthIndex}
+                                        <option value={String(monthIndex)}>
+                                            {monthLabel}
+                                        </option>
+                                    {/each}
+                                </select>
+                                <select
+                                    class="native-select rounded-md border border-[var(--color-secondary)]/30 bg-transparent px-1.5 py-1 pr-6 text-xs"
+                                    value={String(pickerMonth.getFullYear())}
+                                    onchange={(event) =>
+                                        setPickerYearFromSelect(
+                                            (
+                                                event.currentTarget as HTMLSelectElement
+                                            ).value,
+                                        )}
+                                >
+                                    {#each pickerYearOptions() as yearOption}
+                                        <option value={String(yearOption)}>
+                                            {yearOption}
+                                        </option>
+                                    {/each}
+                                </select>
+                            </div>
+                            <button
+                                type="button"
+                                class="rounded p-1 text-[var(--color-text)]/80 hover:bg-[var(--color-primary)]/10"
+                                onclick={nextMonth}
+                            >
+                                <ChevronRight size={14} />
+                            </button>
+                        </div>
+                        <div
+                            class="grid grid-cols-7 gap-1 text-center text-xs text-[var(--color-text)]/60"
+                        >
+                            {#each weekdayLabels as label}
+                                <span>{label}</span>
+                            {/each}
+                        </div>
+                        <div class="mt-2 grid grid-cols-7 gap-1">
+                            {#each calendarDays() as day}
+                                {#if day === null}
+                                    <span class="h-8" />
+                                {:else}
+                                    <button
+                                        type="button"
+                                        class={`h-8 rounded text-sm ${isSelectedDay(day) ? 'bg-[var(--color-primary)]/25 text-white' : 'hover:bg-[var(--color-primary)]/10'}`}
+                                        onclick={() => setPickedDay(day)}
+                                    >
+                                        {day}
+                                    </button>
+                                {/if}
+                            {/each}
+                        </div>
+                        <div class="mt-3 flex items-center gap-1">
+                            {#each quickDateOptions as option}
+                                <button
+                                    type="button"
+                                    class="rounded-md border border-[var(--color-secondary)]/30 px-2 py-1 text-[11px] hover:bg-[var(--color-primary)]/10"
+                                    onclick={() =>
+                                        applyQuickDate(option.offset)}
+                                >
+                                    {option.label}
+                                </button>
+                            {/each}
+                        </div>
+                    </div>
+                {/if}
+            </div>
             <button
                 type="button"
                 class="rounded-lg border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-3 py-2 text-sm font-medium text-[var(--color-primary)]"
@@ -299,16 +713,16 @@
     </div>
 
     {#if viewData.tasks.length > 0}
-        <ul class="mt-5 space-y-2.5">
+        <ul class="mt-5 space-y-2">
             {#each viewData.tasks as task}
                 {@const typedTask = task as DailyTask}
                 <li
-                    class="flex items-center gap-3 rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 px-3 py-2.5"
+                    class={`flex gap-2 rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 px-2.5 ${editingTaskId === typedTask.id ? 'items-start py-2' : 'items-center py-2.5'}`}
                 >
                     <input
                         type="checkbox"
                         checked={typedTask.completed}
-                        class="h-4 w-4 rounded border-[var(--color-secondary)] text-[var(--color-primary)] accent-[var(--color-primary)]"
+                        class="task-checkbox mt-0.5"
                         disabled={typedTask.source !== 'ticktick' ||
                             completingTaskId !== ''}
                         onchange={() =>
@@ -317,7 +731,7 @@
                                 typedTask.source,
                             )}
                     />
-                    <div class="min-w-0">
+                    <div class="min-w-0 flex-1">
                         {#if editingTaskId === typedTask.id}
                             <div
                                 class="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]"
@@ -329,11 +743,144 @@
                                     disabled={mutatingTaskId !== ''}
                                 />
                                 <input
-                                    type="datetime-local"
-                                    class="rounded-lg border border-[var(--color-secondary)]/30 bg-transparent px-2.5 py-1.5 text-xs"
-                                    bind:value={editTaskDueAt}
+                                    type="time"
+                                    class="native-time h-8 rounded-lg border border-[var(--color-secondary)]/30 bg-transparent pl-2.5 pr-3 text-xs w-28"
+                                    bind:value={editTaskTime}
                                     disabled={mutatingTaskId !== ''}
                                 />
+                                <div
+                                    class="relative"
+                                    bind:this={editPickerContainer}
+                                >
+                                    <button
+                                        type="button"
+                                        class="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--color-secondary)]/30 px-2 text-xs"
+                                        onclick={() => openPicker('edit')}
+                                        disabled={mutatingTaskId !== ''}
+                                    >
+                                        <Calendar
+                                            size={12}
+                                            class="text-white"
+                                        />
+                                        {formatDateControl(editTaskDate)}
+                                    </button>
+
+                                    {#if pickerTarget === 'edit'}
+                                        <div
+                                            class="absolute right-0 top-9 z-20 w-64 rounded-xl border border-[var(--color-secondary)]/35 bg-[var(--color-background)] p-3 shadow-lg"
+                                        >
+                                            <div
+                                                class="mb-3 flex items-center justify-between"
+                                            >
+                                                <button
+                                                    type="button"
+                                                    class="rounded p-1 text-[var(--color-text)]/80 hover:bg-[var(--color-primary)]/10"
+                                                    onclick={previousMonth}
+                                                >
+                                                    <ChevronLeft size={14} />
+                                                </button>
+                                                <div
+                                                    class="flex items-center gap-1.5"
+                                                >
+                                                    <select
+                                                        class="native-select rounded-md border border-[var(--color-secondary)]/30 bg-transparent px-1.5 py-1 pr-6 text-xs"
+                                                        value={String(
+                                                            pickerMonth.getMonth(),
+                                                        )}
+                                                        onchange={(event) =>
+                                                            setPickerMonthFromSelect(
+                                                                (
+                                                                    event.currentTarget as HTMLSelectElement
+                                                                ).value,
+                                                            )}
+                                                    >
+                                                        {#each monthLabels as monthLabel, monthIndex}
+                                                            <option
+                                                                value={String(
+                                                                    monthIndex,
+                                                                )}
+                                                            >
+                                                                {monthLabel}
+                                                            </option>
+                                                        {/each}
+                                                    </select>
+                                                    <select
+                                                        class="native-select rounded-md border border-[var(--color-secondary)]/30 bg-transparent px-1.5 py-1 pr-6 text-xs"
+                                                        value={String(
+                                                            pickerMonth.getFullYear(),
+                                                        )}
+                                                        onchange={(event) =>
+                                                            setPickerYearFromSelect(
+                                                                (
+                                                                    event.currentTarget as HTMLSelectElement
+                                                                ).value,
+                                                            )}
+                                                    >
+                                                        {#each pickerYearOptions() as yearOption}
+                                                            <option
+                                                                value={String(
+                                                                    yearOption,
+                                                                )}
+                                                            >
+                                                                {yearOption}
+                                                            </option>
+                                                        {/each}
+                                                    </select>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    class="rounded p-1 text-[var(--color-text)]/80 hover:bg-[var(--color-primary)]/10"
+                                                    onclick={nextMonth}
+                                                >
+                                                    <ChevronRight size={14} />
+                                                </button>
+                                            </div>
+                                            <div
+                                                class="grid grid-cols-7 gap-1 text-center text-xs text-[var(--color-text)]/60"
+                                            >
+                                                {#each weekdayLabels as label}
+                                                    <span>{label}</span>
+                                                {/each}
+                                            </div>
+                                            <div
+                                                class="mt-2 grid grid-cols-7 gap-1"
+                                            >
+                                                {#each calendarDays() as day}
+                                                    {#if day === null}
+                                                        <span class="h-8" />
+                                                    {:else}
+                                                        <button
+                                                            type="button"
+                                                            class={`h-8 rounded text-sm ${isSelectedDay(day) ? 'bg-[var(--color-primary)]/25 text-white' : 'hover:bg-[var(--color-primary)]/10'}`}
+                                                            onclick={() =>
+                                                                setPickedDay(
+                                                                    day,
+                                                                )}
+                                                        >
+                                                            {day}
+                                                        </button>
+                                                    {/if}
+                                                {/each}
+                                            </div>
+                                            <div
+                                                class="mt-3 flex items-center gap-1"
+                                            >
+                                                {#each quickDateOptions as option}
+                                                    <button
+                                                        type="button"
+                                                        class="rounded-md border border-[var(--color-secondary)]/30 px-2 py-1 text-[11px] hover:bg-[var(--color-primary)]/10"
+                                                        onclick={() =>
+                                                            applyQuickDate(
+                                                                option.offset,
+                                                            )}
+                                                    >
+                                                        {option.label}
+                                                    </button>
+                                                {/each}
+                                            </div>
+                                        </div>
+                                    {/if}
+                                </div>
                                 <button
                                     type="button"
                                     class="rounded-lg border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-2.5 py-1.5 text-xs font-medium text-[var(--color-primary)]"
@@ -352,21 +899,30 @@
                                 </button>
                             </div>
                         {:else}
-                            <p class="truncate text-sm font-medium">
-                                {typedTask.title}
-                            </p>
-                            <p
-                                class="mt-0.5 text-xs text-[var(--color-text)]/70"
+                            <div
+                                class="flex flex-wrap items-center gap-x-2 gap-y-0.5"
                             >
-                                Due {formatDate(typedTask.dueAt)}
-                            </p>
+                                <p
+                                    class="truncate text-sm font-medium leading-tight"
+                                >
+                                    {typedTask.title}
+                                </p>
+                                <span
+                                    class="text-xs text-[var(--color-text)]/70"
+                                >
+                                    • Due {formatDate(typedTask.dueAt, {
+                                        includeTimeForToday: true,
+                                        hasTime: typedTask.hasTime,
+                                    })}
+                                </span>
+                            </div>
                         {/if}
                     </div>
 
                     {#if typedTask.source === 'ticktick' && editingTaskId !== typedTask.id}
                         <button
                             type="button"
-                            class="rounded-lg border border-[var(--color-secondary)]/40 px-2 py-1 text-xs"
+                            class="inline-flex h-8 shrink-0 items-center rounded-lg border border-[var(--color-secondary)]/40 px-2.5 text-xs font-medium"
                             onclick={() => startEditingTask(typedTask)}
                             disabled={mutatingTaskId !== '' ||
                                 completingTaskId !== ''}
@@ -400,3 +956,112 @@
         {/if}
     {/if}
 </section>
+
+<style>
+    :global(.native-select),
+    :global(.native-time) {
+        color-scheme: dark;
+        color: var(--color-text);
+    }
+
+    :global(.native-time) {
+        font-variant-numeric: tabular-nums;
+        line-height: 1.1;
+    }
+
+    :global(.native-time::-webkit-datetime-edit) {
+        padding: 0 0.1rem 0 0;
+    }
+
+    :global(.native-time::-webkit-datetime-edit-fields-wrapper) {
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.08rem;
+    }
+
+    :global(.native-time::-webkit-datetime-edit-hour-field),
+    :global(.native-time::-webkit-datetime-edit-minute-field),
+    :global(.native-time::-webkit-datetime-edit-ampm-field) {
+        padding: 0;
+    }
+
+    :global(.native-select) {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.45rem center;
+        background-size: 0.7rem;
+    }
+
+    :global(.native-select::-ms-expand) {
+        display: none;
+    }
+
+    :global(.native-select option) {
+        background: var(--color-background);
+        color: var(--color-text);
+    }
+
+    :global(.native-time::-webkit-calendar-picker-indicator) {
+        filter: brightness(0) invert(1);
+        opacity: 1;
+        cursor: pointer;
+        margin: 0;
+        padding: 0;
+        width: 0.8rem;
+    }
+
+    :global(.task-checkbox) {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 0.35rem;
+        border: 1.5px solid
+            color-mix(in oklab, var(--color-text) 35%, transparent);
+        background: color-mix(
+            in oklab,
+            var(--color-background) 70%,
+            transparent
+        );
+        cursor: pointer;
+        position: relative;
+        transition:
+            border-color 120ms ease,
+            background-color 120ms ease,
+            box-shadow 120ms ease;
+    }
+
+    :global(.task-checkbox:checked) {
+        background: var(--color-primary);
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 1px
+            color-mix(in oklab, var(--color-primary) 35%, transparent);
+    }
+
+    :global(.task-checkbox:checked::after) {
+        content: '';
+        position: absolute;
+        left: 0.29rem;
+        top: 0.08rem;
+        width: 0.22rem;
+        height: 0.5rem;
+        border: solid #fff;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+    }
+
+    :global(.task-checkbox:disabled) {
+        opacity: 0.55;
+        cursor: not-allowed;
+    }
+
+    :global(.task-checkbox:focus-visible) {
+        outline: none;
+        box-shadow: 0 0 0 2px
+            color-mix(in oklab, var(--color-primary) 45%, transparent);
+    }
+</style>

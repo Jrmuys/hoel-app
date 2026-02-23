@@ -11,6 +11,7 @@ type TickTickTask struct {
 	ID            string
 	Title         string
 	DueAt         time.Time
+	HasTime       bool
 	Completed     bool
 	SourceProject string
 	UpdatedAt     time.Time
@@ -37,8 +38,8 @@ func (r *TickTickRepository) ReplaceTasks(ctx context.Context, tasks []TickTickT
 
 	if len(tasks) > 0 {
 		statement, err := transaction.PrepareContext(ctx, `
-			INSERT INTO ticktick_task_cache (task_id, title, due_at, completed, source_project, updated_at)
-			VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`)
+			INSERT INTO ticktick_task_cache (task_id, title, due_at, has_time, completed, source_project, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`)
 		if err != nil {
 			_ = transaction.Rollback()
 			return fmt.Errorf("prepare ticktick insert statement: %w", err)
@@ -50,6 +51,7 @@ func (r *TickTickRepository) ReplaceTasks(ctx context.Context, tasks []TickTickT
 				task.ID,
 				task.Title,
 				task.DueAt.UTC().Format(time.RFC3339),
+				task.HasTime,
 				task.Completed,
 				task.SourceProject,
 			); err != nil {
@@ -74,7 +76,7 @@ func (r *TickTickRepository) ReplaceTasks(ctx context.Context, tasks []TickTickT
 
 func (r *TickTickRepository) ListTasksDueBetween(ctx context.Context, startInclusive, endInclusive time.Time) ([]TickTickTask, error) {
 	const query = `
-	SELECT task_id, title, due_at, completed, source_project, updated_at
+	SELECT task_id, title, due_at, has_time, completed, source_project, updated_at
 	FROM ticktick_task_cache
 	WHERE completed = 0
 	  AND due_at >= ?
@@ -98,12 +100,13 @@ func (r *TickTickRepository) ListTasksDueBetween(ctx context.Context, startInclu
 			id            string
 			title         string
 			dueAtRaw      string
+			hasTime       bool
 			completed     bool
 			sourceProject string
 			updatedAtRaw  string
 		)
 
-		if err := rows.Scan(&id, &title, &dueAtRaw, &completed, &sourceProject, &updatedAtRaw); err != nil {
+		if err := rows.Scan(&id, &title, &dueAtRaw, &hasTime, &completed, &sourceProject, &updatedAtRaw); err != nil {
 			return nil, fmt.Errorf("scan ticktick due task: %w", err)
 		}
 
@@ -121,6 +124,7 @@ func (r *TickTickRepository) ListTasksDueBetween(ctx context.Context, startInclu
 			ID:            id,
 			Title:         title,
 			DueAt:         dueAt,
+			HasTime:       hasTime,
 			Completed:     completed,
 			SourceProject: sourceProject,
 			UpdatedAt:     updatedAt,

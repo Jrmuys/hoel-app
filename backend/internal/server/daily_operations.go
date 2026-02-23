@@ -14,6 +14,7 @@ type dailyTaskResponse struct {
 	ID        string `json:"id"`
 	Title     string `json:"title"`
 	DueAt     string `json:"dueAt"`
+	HasTime   bool   `json:"hasTime"`
 	Completed bool   `json:"completed"`
 	Source    string `json:"source"`
 }
@@ -56,6 +57,7 @@ func (s *Server) dailyOperationsHandler(w http.ResponseWriter, r *http.Request) 
 				ID:        task.ID,
 				Title:     task.Title,
 				DueAt:     task.DueAt.UTC().Format(time.RFC3339),
+				HasTime:   task.HasTime,
 				Completed: task.Completed,
 				Source:    "ticktick",
 			})
@@ -79,6 +81,7 @@ func (s *Server) dailyOperationsHandler(w http.ResponseWriter, r *http.Request) 
 					ID:        "system-trash-takeout",
 					Title:     "Take out trash tonight",
 					DueAt:     schedule.NextPickupDate.UTC().Format(time.RFC3339),
+					HasTime:   true,
 					Completed: false,
 					Source:    "system",
 				})
@@ -92,6 +95,7 @@ func (s *Server) dailyOperationsHandler(w http.ResponseWriter, r *http.Request) 
 						ID:        "system-recycling-takeout",
 						Title:     "Take out recycling tonight",
 						DueAt:     schedule.NextRecyclingDate.UTC().Format(time.RFC3339),
+						HasTime:   true,
 						Completed: false,
 						Source:    "system",
 					})

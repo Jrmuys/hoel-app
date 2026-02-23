@@ -33,6 +33,7 @@ type tickTickTaskDTO struct {
 	ID       string `json:"id"`
 	Title    string `json:"title"`
 	DueDate  string `json:"dueDate"`
+	AllDay   bool   `json:"allDay"`
 	Status   int    `json:"status"`
 	Priority int    `json:"priority"`
 }
@@ -41,6 +42,7 @@ type tickTickTaskUpsertRequest struct {
 	ProjectID string `json:"projectId,omitempty"`
 	Title     string `json:"title"`
 	DueDate   string `json:"dueDate,omitempty"`
+	AllDay    *bool  `json:"allDay,omitempty"`
 }
 
 func NewTickTickService(client *Client, repository *db.TickTickRepository, oauth *TickTickOAuthService, apiRoot, projectID string, pollInterval time.Duration) *TickTickService {
@@ -154,6 +156,7 @@ func (s *TickTickService) SyncOnce(ctx context.Context) error {
 			ID:            strings.TrimSpace(task.ID),
 			Title:         strings.TrimSpace(task.Title),
 			DueAt:         dueAt,
+			HasTime:       !task.AllDay,
 			Completed:     tickTickCompleted(task.Status),
 			SourceProject: s.projectID,
 		})
@@ -238,7 +241,7 @@ func (s *TickTickService) CompleteTask(ctx context.Context, taskID string) error
 	return nil
 }
 
-func (s *TickTickService) CreateTask(ctx context.Context, title string, dueAt time.Time) (string, error) {
+func (s *TickTickService) CreateTask(ctx context.Context, title string, dueAt time.Time, hasTime bool) (string, error) {
 	if !s.Enabled() {
 		log.Printf("ticktick create-task skipped: service not enabled")
 		return "", fmt.Errorf("ticktick service is not enabled")
@@ -258,7 +261,11 @@ func (s *TickTickService) CreateTask(ctx context.Context, title string, dueAt ti
 	bodyPayload := tickTickTaskUpsertRequest{
 		ProjectID: s.projectID,
 		Title:     title,
-		DueDate:   dueAt.UTC().Format(time.RFC3339),
+		DueDate:   formatTickTickDueDate(dueAt, hasTime),
+	}
+	if !hasTime {
+		allDay := true
+		bodyPayload.AllDay = &allDay
 	}
 	body, err := json.Marshal(bodyPayload)
 	if err != nil {
@@ -295,7 +302,7 @@ func (s *TickTickService) CreateTask(ctx context.Context, title string, dueAt ti
 	return createdID, nil
 }
 
-func (s *TickTickService) UpdateTask(ctx context.Context, taskID, title string, dueAt time.Time) error {
+func (s *TickTickService) UpdateTask(ctx context.Context, taskID, title string, dueAt time.Time, hasTime bool) error {
 	if !s.Enabled() {
 		log.Printf("ticktick update-task skipped: service not enabled")
 		return fmt.Errorf("ticktick service is not enabled")
@@ -319,7 +326,11 @@ func (s *TickTickService) UpdateTask(ctx context.Context, taskID, title string, 
 
 	bodyPayload := tickTickTaskUpsertRequest{
 		Title:   title,
-		DueDate: dueAt.UTC().Format(time.RFC3339),
+		DueDate: formatTickTickDueDate(dueAt, hasTime),
+	}
+	if !hasTime {
+		allDay := true
+		bodyPayload.AllDay = &allDay
 	}
 	body, err := json.Marshal(bodyPayload)
 	if err != nil {
@@ -379,20 +390,31 @@ func parseTickTickDueDate(value string) (time.Time, bool, error) {
 		return time.Time{}, false, nil
 	}
 
-	layouts := []string{
-		time.RFC3339,
-		"2006-01-02T15:04:05.000-0700",
-		"2006-01-02T15:04:05-0700",
-		"2006-01-02",
+	if parsed, err := time.Parse(time.RFC3339, trimmed); err == nil {
+		return parsed.UTC(), true, nil
 	}
 
-	for _, layout := range layouts {
-		if parsed, err := time.Parse(layout, trimmed); err == nil {
-			return parsed.UTC(), true, nil
-		}
+	if parsed, err := time.Parse("2006-01-02T15:04:05.000-0700", trimmed); err == nil {
+		return parsed.UTC(), true, nil
+	}
+
+	if parsed, err := time.Parse("2006-01-02T15:04:05-0700", trimmed); err == nil {
+		return parsed.UTC(), true, nil
+	}
+
+	if parsed, err := time.ParseInLocation("2006-01-02", trimmed, time.Local); err == nil {
+		return parsed.UTC(), true, nil
 	}
 
 	return time.Time{}, false, fmt.Errorf("unsupported due date format %q", value)
+}
+
+func formatTickTickDueDate(value time.Time, hasTime bool) string {
+	if !hasTime {
+		return value.In(time.Local).Format("2006-01-02T15:04:05.000-0700")
+	}
+
+	return value.UTC().Format("2006-01-02T15:04:05.000-0700")
 }
 
 func tickTickCompleted(status int) bool {
@@ -453,6 +475,7 @@ func extractTickTickTasksFromArray(value any) ([]tickTickTaskDTO, bool) {
 			ID:      id,
 			Title:   title,
 			DueDate: mapStringValue(entry, "dueDate"),
+			AllDay:  mapBoolValue(entry, "allDay"),
 			Status:  mapIntValue(entry, "status"),
 		})
 	}
@@ -500,6 +523,26 @@ func mapIntValue(entry map[string]any, key string) int {
 		return 0
 	default:
 		return 0
+	}
+}
+
+func mapBoolValue(entry map[string]any, key string) bool {
+	value, ok := entry[key]
+	if !ok || value == nil {
+		return false
+	}
+
+	switch typed := value.(type) {
+	case bool:
+		return typed
+	case string:
+		return strings.EqualFold(strings.TrimSpace(typed), "true") || strings.TrimSpace(typed) == "1"
+	case float64:
+		return typed != 0
+	case int:
+		return typed != 0
+	default:
+		return false
 	}
 }
 
