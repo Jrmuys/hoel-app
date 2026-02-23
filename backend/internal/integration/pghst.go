@@ -344,6 +344,9 @@ func parseFlexibleDate(value string) (time.Time, error) {
 	layouts := []string{
 		time.RFC3339,
 		"2006-01-02",
+		"1-2-2006",
+		"01-02-2006",
+		"1/2/2006",
 		"01/02/2006",
 		"2006-01-02 15:04:05",
 	}
