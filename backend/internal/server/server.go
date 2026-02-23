@@ -11,11 +11,13 @@ import (
 )
 
 type Server struct {
-	httpServer        *http.Server
-	monitoring        *db.MonitoringRepository
-	pghRepository     *db.PGHRepository
+	httpServer         *http.Server
+	monitoring         *db.MonitoringRepository
+	pghRepository      *db.PGHRepository
 	tickTickRepository *db.TickTickRepository
-	integrationClient *integration.Client
+	integrationClient  *integration.Client
+	tickTickAPIRoot    string
+	tickTickToken      string
 }
 
 type healthResponse struct {
@@ -23,12 +25,20 @@ type healthResponse struct {
 	Timestamp string `json:"timestamp"`
 }
 
-func New(address string, readTimeout, writeTimeout time.Duration, allowedOrigins []string, monitoring *db.MonitoringRepository, pghRepository *db.PGHRepository, tickTickRepository *db.TickTickRepository, integrationClient *integration.Client) *Server {
+func New(address string, readTimeout, writeTimeout time.Duration, allowedOrigins []string, monitoring *db.MonitoringRepository, pghRepository *db.PGHRepository, tickTickRepository *db.TickTickRepository, integrationClient *integration.Client, tickTickAPIRoot, tickTickToken string) *Server {
 	mux := http.NewServeMux()
-	server := &Server{monitoring: monitoring, pghRepository: pghRepository, tickTickRepository: tickTickRepository, integrationClient: integrationClient}
+	server := &Server{
+		monitoring:         monitoring,
+		pghRepository:      pghRepository,
+		tickTickRepository: tickTickRepository,
+		integrationClient:  integrationClient,
+		tickTickAPIRoot:    tickTickAPIRoot,
+		tickTickToken:      tickTickToken,
+	}
 	mux.HandleFunc("/api/health", healthHandler)
 	mux.HandleFunc("/api/status-bar", server.statusBarHandler)
 	mux.HandleFunc("/api/daily-operations", server.dailyOperationsHandler)
+	mux.HandleFunc("/api/debug/ticktick-projects", server.tickTickProjectsHandler)
 	handler := newCORSSettings(allowedOrigins).wrap(mux)
 
 	server.httpServer = &http.Server{

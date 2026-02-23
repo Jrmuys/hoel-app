@@ -75,6 +75,8 @@ func main() {
 		pghRepository,
 		tickTickRepository,
 		integrationClient,
+		cfg.TickTickAPIRoot,
+		cfg.TickTickToken,
 	)
 	errChannel := make(chan error, 1)
 
