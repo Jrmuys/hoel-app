@@ -8,7 +8,7 @@
 </script>
 
 <main
-    class="app-shell mx-auto grid min-h-screen w-full max-w-6xl gap-6 p-4 sm:p-8"
+    class="app-shell mx-auto grid min-h-dvh w-full max-w-6xl gap-6 p-4 sm:p-8"
 >
     <section class="panel">
         <div class="flex flex-wrap items-end justify-between gap-3">

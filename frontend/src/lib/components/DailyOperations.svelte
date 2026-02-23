@@ -609,9 +609,9 @@
         </div>
     </header>
 
-    <div class="mt-5 grid gap-2 sm:grid-cols-2">
+    <div class="mt-4 grid gap-2 sm:grid-cols-2">
         <div
-            class="rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 p-3"
+            class="rounded-xl border border-[var(--color-secondary)]/18 bg-[var(--color-background)]/35 p-3"
         >
             <p
                 class="inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70"
@@ -624,7 +624,7 @@
             </p>
         </div>
         <div
-            class="rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 p-3"
+            class="rounded-xl border border-[var(--color-secondary)]/18 bg-[var(--color-background)]/35 p-3"
         >
             <p
                 class="inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70"
@@ -639,17 +639,17 @@
     </div>
 
     <div
-        class="mt-5 rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 p-3"
+        class="mt-4 rounded-xl border border-[var(--color-secondary)]/18 bg-[var(--color-background)]/35 p-3"
     >
         <p
             class="text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70"
         >
             Add TickTick Task
         </p>
-        <div class="mt-2 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+        <div class="mt-2 grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
             <input
                 type="text"
-                class="h-10 rounded-lg border border-[var(--color-secondary)]/30 bg-transparent px-3 text-sm"
+                class="h-10 rounded-lg border border-[var(--color-secondary)]/26 bg-transparent px-3 text-sm"
                 placeholder="Task title"
                 bind:value={newTaskTitle}
                 disabled={mutatingTaskId !== ''}
@@ -660,7 +660,7 @@
             >
                 <button
                     type="button"
-                    class="inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--color-secondary)]/30 bg-transparent px-3 text-sm"
+                    class="inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--color-secondary)]/26 bg-transparent px-3 text-sm"
                     onclick={() => openPicker('new')}
                     disabled={mutatingTaskId !== ''}
                 >
@@ -669,14 +669,14 @@
                 </button>
                 <input
                     type="time"
-                    class="native-time h-10 w-24 rounded-lg border border-[var(--color-secondary)]/30 bg-transparent pl-2 pr-1.5 text-sm"
+                    class="native-time h-10 w-24 rounded-lg border border-[var(--color-secondary)]/26 bg-transparent pl-2 pr-1.5 text-sm"
                     bind:value={newTaskTime}
                     disabled={mutatingTaskId !== ''}
                 />
 
                 {#if pickerTarget === 'new'}
                     <div
-                        class="absolute left-0 top-12 z-20 w-64 rounded-xl border border-[var(--color-secondary)]/35 bg-[var(--color-background)] p-3 shadow-lg"
+                        class="absolute right-0 top-12 z-20 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-[var(--color-secondary)]/35 bg-[var(--color-background)] p-3 shadow-lg"
                     >
                         <div class="mb-3 flex items-center justify-between">
                             <button
@@ -778,7 +778,7 @@
 
     {#if viewData.tasks.length > 0}
         <ul
-            class="mt-5 overflow-hidden rounded-xl border border-[var(--color-secondary)]/25 divide-y divide-[var(--color-secondary)]/25"
+            class="mt-4 overflow-hidden rounded-xl border border-[var(--color-secondary)]/18 divide-y divide-[var(--color-secondary)]/18"
         >
             {#each viewData.tasks as task}
                 {@const typedTask = task as DailyTask}
@@ -800,7 +800,7 @@
                     <div class="min-w-0 flex-1">
                         {#if editingTaskId === typedTask.id}
                             <div
-                                class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto]"
+                                class="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto]"
                             >
                                 <input
                                     type="text"
@@ -833,7 +833,7 @@
 
                                     {#if pickerTarget === 'edit'}
                                         <div
-                                            class="absolute right-0 top-9 z-20 w-64 rounded-xl border border-[var(--color-secondary)]/35 bg-[var(--color-background)] p-3 shadow-lg"
+                                            class="absolute right-0 top-9 z-20 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-[var(--color-secondary)]/35 bg-[var(--color-background)] p-3 shadow-lg"
                                         >
                                             <div
                                                 class="mb-3 flex items-center justify-between"
@@ -1035,7 +1035,7 @@
         {/if}
     {:else}
         <p
-            class="mt-5 rounded-xl border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 p-3 text-sm text-[var(--color-text)]/70"
+            class="mt-4 rounded-xl border border-[var(--color-secondary)]/18 bg-[var(--color-background)]/35 p-3 text-sm text-[var(--color-text)]/70"
         >
             No daily tasks available yet.
         </p>

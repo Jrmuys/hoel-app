@@ -23,9 +23,23 @@
 
 html,
 body {
+    width: 100%;
     min-height: 100%;
     background: var(--color-background);
     color: var(--color-text);
+    overflow-x: hidden;
+}
+
+#svelte {
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
 }
 
 body {
@@ -88,14 +102,23 @@ svg {
 
 .app-shell {
     align-content: start;
+    overflow-x: hidden;
+}
+
+.app-shell > * {
+    min-width: 0;
 }
 
 .panel {
+    max-width: 100%;
     border-radius: 1rem;
     border: 1px solid
         color-mix(in srgb, var(--color-secondary) 30%, transparent);
     background: var(--color-surface);
     padding: 1rem;
+    overflow-x: hidden;
+    overflow-wrap: anywhere;
+    word-break: break-word;
     transition:
         border-color 180ms ease,
         box-shadow 220ms ease,
