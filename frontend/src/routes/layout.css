@@ -1,0 +1,29 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+:root {
+	--color-primary: #2d5a27;
+	--color-secondary: #8b9474;
+	--color-background: #f4f5f0;
+	--color-surface: #ffffff;
+	--color-text: #1a1c19;
+	--color-error: #991b1b;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--color-primary: #a3b18a;
+		--color-secondary: #5c6b50;
+		--color-background: #1e201e;
+		--color-surface: #2e302e;
+		--color-text: #e8eae6;
+		--color-error: #f87171;
+	}
+}
+
+html,
+body {
+	min-height: 100%;
+	background: var(--color-background);
+	color: var(--color-text);
+}
