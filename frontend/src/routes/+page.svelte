@@ -1,5 +1,6 @@
 <script lang="ts">
     import DailyOperations from '$lib/components/DailyOperations.svelte';
+    import LogisticsPlanning from '$lib/components/LogisticsPlanning.svelte';
     import StatusBar from '$lib/components/StatusBar.svelte';
     import type { PageData } from './$types';
 
@@ -48,6 +49,20 @@
             class="panel border-[var(--color-error)]/40 text-sm text-[var(--color-error)]"
         >
             Unable to load daily operations.
+        </section>
+    {/await}
+
+    {#await data.logisticsPromise}
+        <section class="panel text-sm text-[var(--color-text)]/70">
+            Loading logistics &amp; planning...
+        </section>
+    {:then logistics}
+        <LogisticsPlanning data={logistics} />
+    {:catch}
+        <section
+            class="panel border-[var(--color-error)]/40 text-sm text-[var(--color-error)]"
+        >
+            Unable to load logistics &amp; planning.
         </section>
     {/await}
 </main>

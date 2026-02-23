@@ -41,7 +41,10 @@ export interface GarbageWindow {
 
 export interface DailyOperationsModel {
     tasks: DailyTask[];
+    garbage: GarbageWindow;
+}
+
+export interface LogisticsPlanningModel {
     shoppingTasks: DailyTask[];
     maintenanceTasks: DailyTask[];
-    garbage: GarbageWindow;
 }

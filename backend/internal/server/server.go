@@ -51,6 +51,7 @@ func New(address string, readTimeout, writeTimeout time.Duration, allowedOrigins
 	mux.HandleFunc("/api/health", healthHandler)
 	mux.HandleFunc("/api/status-bar", server.statusBarHandler)
 	mux.HandleFunc("/api/daily-operations", server.dailyOperationsHandler)
+	mux.HandleFunc("/api/logistics-planning", server.logisticsPlanningHandler)
 	mux.HandleFunc("/api/ticktick/oauth/start", server.tickTickOAuthStartHandler)
 	mux.HandleFunc("/api/ticktick/oauth/callback", server.tickTickOAuthCallbackHandler)
 	mux.HandleFunc("/api/ticktick/tasks/create", server.tickTickCreateTaskHandler)

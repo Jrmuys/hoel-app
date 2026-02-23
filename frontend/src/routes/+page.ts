@@ -1,5 +1,13 @@
-import { loadDailyOperations, loadStatusBar } from '$lib/api/dashboard';
-import type { DailyOperationsModel, StatusBarModel } from '$lib/types/dashboard';
+import {
+    loadDailyOperations,
+    loadLogisticsPlanning,
+    loadStatusBar,
+} from '$lib/api/dashboard';
+import type {
+    DailyOperationsModel,
+    LogisticsPlanningModel,
+    StatusBarModel,
+} from '$lib/types/dashboard';
 import type { PageLoad } from './$types';
 
 const fallbackStatus: StatusBarModel = {
@@ -17,8 +25,6 @@ const fallbackStatus: StatusBarModel = {
 
 const fallbackDailyOperations: DailyOperationsModel = {
     tasks: [],
-    shoppingTasks: [],
-    maintenanceTasks: [],
     garbage: {
         nextPickupDate: '',
         nextTrashPickupDate: '',
@@ -30,9 +36,17 @@ const fallbackDailyOperations: DailyOperationsModel = {
     },
 };
 
+const fallbackLogisticsPlanning: LogisticsPlanningModel = {
+    shoppingTasks: [],
+    maintenanceTasks: [],
+};
+
 export const load: PageLoad = ({ fetch }) => {
     const statusPromise = loadStatusBar(fetch).catch(() => fallbackStatus);
     const dailyPromise = loadDailyOperations(fetch).catch(() => fallbackDailyOperations);
+    const logisticsPromise = loadLogisticsPlanning(fetch).catch(() =>
+        fallbackLogisticsPlanning,
+    );
 
     const todayLabel = new Intl.DateTimeFormat(undefined, {
         weekday: 'long',
@@ -44,5 +58,6 @@ export const load: PageLoad = ({ fetch }) => {
         todayLabel,
         statusPromise,
         dailyPromise,
+        logisticsPromise,
     };
 };

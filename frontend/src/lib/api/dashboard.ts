@@ -2,6 +2,7 @@ import type {
     AlertLevel,
     DailyOperationsModel,
     IntegrationHealth,
+    LogisticsPlanningModel,
     StatusAlert,
     StatusBarModel,
 } from '$lib/types/dashboard';
@@ -56,9 +57,12 @@ interface RawIntegrationStatus {
 
 interface RawDailyOperationsResponse {
     tasks?: RawDailyTask[];
+    garbage?: RawGarbage;
+}
+
+interface RawLogisticsPlanningResponse {
     shoppingTasks?: RawDailyTask[];
     maintenanceTasks?: RawDailyTask[];
-    garbage?: RawGarbage;
 }
 
 interface RawDailyTask {
@@ -104,8 +108,6 @@ export async function loadDailyOperations(fetchFn: FetchFn = fetch): Promise<Dai
 
     return {
         tasks: (payload.tasks ?? []).map(toTaskModel),
-        shoppingTasks: (payload.shoppingTasks ?? []).map(toTaskModel),
-        maintenanceTasks: (payload.maintenanceTasks ?? []).map(toTaskModel),
         garbage: {
             nextPickupDate: payload.garbage?.nextPickupDate ?? '',
             nextTrashPickupDate:
@@ -116,6 +118,29 @@ export async function loadDailyOperations(fetchFn: FetchFn = fetch): Promise<Dai
             showTrashTakeOutReminder: Boolean(payload.garbage?.showTrashTakeOutReminder),
             showRecyclingTakeOutReminder: Boolean(payload.garbage?.showRecyclingTakeOutReminder),
         },
+    };
+}
+
+export async function loadLogisticsPlanning(
+    fetchFn: FetchFn = fetch,
+): Promise<LogisticsPlanningModel> {
+    const payload = await fetchJSON<RawLogisticsPlanningResponse>(
+        '/api/logistics-planning',
+        fetchFn,
+    );
+
+    const toTaskModel = (task: RawDailyTask) => ({
+        id: task.id ?? '',
+        title: task.title ?? 'Untitled task',
+        dueAt: task.dueAt ?? new Date().toISOString(),
+        hasTime: task.hasTime !== false,
+        completed: Boolean(task.completed),
+        source: toTaskSource(task.source),
+    });
+
+    return {
+        shoppingTasks: (payload.shoppingTasks ?? []).map(toTaskModel),
+        maintenanceTasks: (payload.maintenanceTasks ?? []).map(toTaskModel),
     };
 }
 

@@ -2,15 +2,12 @@ package server
 
 import (
 	"net/http"
-	"strings"
 	"time"
 )
 
 type dailyOperationsResponse struct {
-	Tasks            []dailyTaskResponse `json:"tasks"`
-	ShoppingTasks    []dailyTaskResponse `json:"shoppingTasks"`
-	MaintenanceTasks []dailyTaskResponse `json:"maintenanceTasks"`
-	Garbage          garbageResponse     `json:"garbage"`
+	Tasks   []dailyTaskResponse `json:"tasks"`
+	Garbage garbageResponse     `json:"garbage"`
 }
 
 type dailyTaskResponse struct {
@@ -36,9 +33,7 @@ func (s *Server) dailyOperationsHandler(w http.ResponseWriter, r *http.Request) 
 	now := time.Now().UTC()
 
 	payload := dailyOperationsResponse{
-		Tasks:            []dailyTaskResponse{},
-		ShoppingTasks:    []dailyTaskResponse{},
-		MaintenanceTasks: []dailyTaskResponse{},
+		Tasks: []dailyTaskResponse{},
 		Garbage: garbageResponse{
 			NextPickupDate:               "",
 			NextTrashPickupDate:          "",
@@ -60,31 +55,20 @@ func (s *Server) dailyOperationsHandler(w http.ResponseWriter, r *http.Request) 
 		endOfToday := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, int(time.Second-time.Nanosecond), time.UTC)
 
 		for _, task := range tasks {
-			responseTask := dailyTaskResponse{
+			isDailyTask := tickTickTaskHasTag(task.Tags, s.tickTickDailyTag)
+			isDueTodayOrOverdue := !task.DueAt.After(endOfToday)
+			if !isDailyTask && !isDueTodayOrOverdue {
+				continue
+			}
+
+			payload.Tasks = append(payload.Tasks, dailyTaskResponse{
 				ID:        task.ID,
 				Title:     task.Title,
 				DueAt:     task.DueAt.UTC().Format(time.RFC3339),
 				HasTime:   task.HasTime,
 				Completed: task.Completed,
 				Source:    "ticktick",
-			}
-
-			isShoppingTask := s.tickTickShoppingProject != "" && strings.EqualFold(task.SourceProject, s.tickTickShoppingProject)
-			if isShoppingTask {
-				payload.ShoppingTasks = append(payload.ShoppingTasks, responseTask)
-				continue
-			}
-
-			isMaintenanceTask := tickTickTaskHasTag(task.Tags, s.tickTickMaintenanceTag)
-			if isMaintenanceTask {
-				payload.MaintenanceTasks = append(payload.MaintenanceTasks, responseTask)
-			}
-
-			isDailyTask := tickTickTaskHasTag(task.Tags, s.tickTickDailyTag)
-			isDueTodayOrOverdue := !task.DueAt.After(endOfToday)
-			if isDailyTask || isDueTodayOrOverdue {
-				payload.Tasks = append(payload.Tasks, responseTask)
-			}
+			})
 		}
 	}
 
