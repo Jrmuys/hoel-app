@@ -37,13 +37,23 @@ func main() {
 	}
 
 	monitoringRepository := db.NewMonitoringRepository(database)
+	pghRepository := db.NewPGHRepository(database)
 	integrationClient := integration.NewClient(
 		cfg.OutboundTimeout,
 		cfg.OutboundRetries,
 		cfg.OutboundBackoff,
 		monitoringRepository,
 	)
-	apiServer := server.New(cfg.Address(), cfg.ReadTimeout, cfg.WriteTimeout, monitoringRepository, integrationClient)
+	pghService := integration.NewPGHService(integrationClient, pghRepository, cfg.PGHEndpoint, cfg.PGHPollInterval)
+
+	runtimeContext, runtimeCancel := context.WithCancel(context.Background())
+	defer runtimeCancel()
+
+	if pghService.Enabled() {
+		go pghService.Start(runtimeContext)
+	}
+
+	apiServer := server.New(cfg.Address(), cfg.ReadTimeout, cfg.WriteTimeout, monitoringRepository, pghRepository, integrationClient)
 	errChannel := make(chan error, 1)
 
 	go func() {
@@ -63,6 +73,8 @@ func main() {
 			log.Fatalf("server failed: %v", serverErr)
 		}
 	}
+
+	runtimeCancel()
 
 	shutdownContext, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()

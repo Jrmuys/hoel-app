@@ -18,6 +18,8 @@ type Config struct {
 	OutboundTimeout time.Duration
 	OutboundRetries int
 	OutboundBackoff time.Duration
+	PGHEndpoint     string
+	PGHPollInterval time.Duration
 }
 
 func Load() (Config, error) {
@@ -56,6 +58,11 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
+	pghPollInterval, err := durationFromEnv("PGHST_POLL_INTERVAL", 12*time.Hour)
+	if err != nil {
+		return Config{}, err
+	}
+
 	sqlitePath := stringFromEnv("SQLITE_PATH", "./hoel.db")
 	if sqlitePath == "" {
 		return Config{}, fmt.Errorf("SQLITE_PATH cannot be empty")
@@ -77,6 +84,8 @@ func Load() (Config, error) {
 		OutboundTimeout: outboundTimeout,
 		OutboundRetries: outboundRetries,
 		OutboundBackoff: outboundBackoff,
+		PGHEndpoint:     stringFromEnv("PGHST_ENDPOINT", ""),
+		PGHPollInterval: pghPollInterval,
 	}, nil
 }
 
