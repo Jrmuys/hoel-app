@@ -80,7 +80,9 @@
             return '';
         }
 
-        const localTime = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+        const localTime = new Date(
+            date.getTime() - date.getTimezoneOffset() * 60_000,
+        );
         return localTime.toISOString().slice(0, 16);
     }
 
@@ -266,7 +268,9 @@
     <div
         class="mt-5 rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 p-3"
     >
-        <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70">
+        <p
+            class="text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70"
+        >
             Add TickTick Task
         </p>
         <div class="mt-2 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
@@ -315,7 +319,9 @@
                     />
                     <div class="min-w-0">
                         {#if editingTaskId === typedTask.id}
-                            <div class="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
+                            <div
+                                class="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]"
+                            >
                                 <input
                                     type="text"
                                     class="rounded-lg border border-[var(--color-secondary)]/30 bg-transparent px-2.5 py-1.5 text-sm"
@@ -349,7 +355,9 @@
                             <p class="truncate text-sm font-medium">
                                 {typedTask.title}
                             </p>
-                            <p class="mt-0.5 text-xs text-[var(--color-text)]/70">
+                            <p
+                                class="mt-0.5 text-xs text-[var(--color-text)]/70"
+                            >
                                 Due {formatDate(typedTask.dueAt)}
                             </p>
                         {/if}
@@ -360,7 +368,8 @@
                             type="button"
                             class="rounded-lg border border-[var(--color-secondary)]/40 px-2 py-1 text-xs"
                             onclick={() => startEditingTask(typedTask)}
-                            disabled={mutatingTaskId !== '' || completingTaskId !== ''}
+                            disabled={mutatingTaskId !== '' ||
+                                completingTaskId !== ''}
                         >
                             Edit
                         </button>
