@@ -10,7 +10,7 @@ import (
 )
 
 type Server struct {
-	httpServer  *http.Server
+	httpServer *http.Server
 	monitoring *db.MonitoringRepository
 }
 

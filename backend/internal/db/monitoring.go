@@ -209,13 +209,13 @@ func (r *MonitoringRepository) ListRecentUnresolvedErrors(ctx context.Context, l
 
 func scanAPIError(row scanner) (APIError, error) {
 	var (
-		id          int64
-		serviceName string
-		endpoint    string
-		httpStatus  sql.NullInt64
-		message     sql.NullString
+		id           int64
+		serviceName  string
+		endpoint     string
+		httpStatus   sql.NullInt64
+		message      sql.NullString
 		createdAtRaw string
-		resolved    bool
+		resolved     bool
 	)
 
 	if err := row.Scan(&id, &serviceName, &endpoint, &httpStatus, &message, &createdAtRaw, &resolved); err != nil {
