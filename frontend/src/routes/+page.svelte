@@ -1,7 +1,7 @@
 <script lang="ts">
+    import { loadDailyOperations, loadStatusBar } from '$lib/api/dashboard';
     import DailyOperations from '$lib/components/DailyOperations.svelte';
     import StatusBar from '$lib/components/StatusBar.svelte';
-    import { loadDailyOperations, loadStatusBar } from '$lib/mock/dashboard';
 
     const statusPromise = loadStatusBar();
     const dailyPromise = loadDailyOperations();
