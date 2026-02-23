@@ -1,16 +1,9 @@
 <script lang="ts">
-    import { loadDailyOperations, loadStatusBar } from '$lib/api/dashboard';
     import DailyOperations from '$lib/components/DailyOperations.svelte';
     import StatusBar from '$lib/components/StatusBar.svelte';
+    import type { PageData } from './$types';
 
-    const statusPromise = loadStatusBar();
-    const dailyPromise = loadDailyOperations();
-
-    const todayLabel = new Intl.DateTimeFormat(undefined, {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-    }).format(new Date());
+    let { data }: { data: PageData } = $props();
 </script>
 
 <main
@@ -26,11 +19,11 @@
             <h1 class="text-3xl font-semibold text-[var(--color-primary)]">
                 Dashboard
             </h1>
-            <p class="text-sm text-[var(--color-text)]/70">{todayLabel}</p>
+            <p class="text-sm text-[var(--color-text)]/70">{data.todayLabel}</p>
         </div>
     </section>
 
-    {#await statusPromise}
+    {#await data.statusPromise}
         <section class="panel text-sm text-[var(--color-text)]/70">
             Loading status...
         </section>
@@ -44,7 +37,7 @@
         </section>
     {/await}
 
-    {#await dailyPromise}
+    {#await data.dailyPromise}
         <section class="panel text-sm text-[var(--color-text)]/70">
             Loading daily operations...
         </section>

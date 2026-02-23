@@ -7,6 +7,7 @@ import type {
 } from '$lib/types/dashboard';
 
 const defaultBaseURL = 'http://127.0.0.1:8080';
+type FetchFn = typeof fetch;
 
 function apiBaseURL(): string {
 	const configured = import.meta.env.PUBLIC_API_BASE_URL;
@@ -17,8 +18,8 @@ function apiBaseURL(): string {
 	return configured.trim().replace(/\/$/, '');
 }
 
-async function fetchJSON<T>(path: string): Promise<T> {
-	const response = await fetch(`${apiBaseURL()}${path}`, {
+async function fetchJSON<T>(path: string, fetchFn: FetchFn): Promise<T> {
+	const response = await fetchFn(`${apiBaseURL()}${path}`, {
 		headers: {
 			Accept: 'application/json',
 		},
@@ -72,8 +73,8 @@ interface RawGarbage {
 	showIndicator?: boolean;
 }
 
-export async function loadStatusBar(): Promise<StatusBarModel> {
-	const payload = await fetchJSON<RawStatusBarResponse>('/api/status-bar');
+export async function loadStatusBar(fetchFn: FetchFn = fetch): Promise<StatusBarModel> {
+	const payload = await fetchJSON<RawStatusBarResponse>('/api/status-bar', fetchFn);
 
 	return {
 		systemHealth: toSystemHealth(payload.system_health),
@@ -82,8 +83,8 @@ export async function loadStatusBar(): Promise<StatusBarModel> {
 	};
 }
 
-export async function loadDailyOperations(): Promise<DailyOperationsModel> {
-	const payload = await fetchJSON<RawDailyOperationsResponse>('/api/daily-operations');
+export async function loadDailyOperations(fetchFn: FetchFn = fetch): Promise<DailyOperationsModel> {
+	const payload = await fetchJSON<RawDailyOperationsResponse>('/api/daily-operations', fetchFn);
 
 	return {
 		tasks: (payload.tasks ?? []).map((task) => ({
