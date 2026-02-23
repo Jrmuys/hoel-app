@@ -15,8 +15,8 @@ import (
 type TickTickService struct {
 	client       *Client
 	repository   *db.TickTickRepository
+	oauth        *TickTickOAuthService
 	apiRoot      string
-	accessToken  string
 	projectID    string
 	pollInterval time.Duration
 }
@@ -33,7 +33,7 @@ type tickTickTaskDTO struct {
 	Priority int    `json:"priority"`
 }
 
-func NewTickTickService(client *Client, repository *db.TickTickRepository, apiRoot, accessToken, projectID string, pollInterval time.Duration) *TickTickService {
+func NewTickTickService(client *Client, repository *db.TickTickRepository, oauth *TickTickOAuthService, apiRoot, projectID string, pollInterval time.Duration) *TickTickService {
 	if pollInterval <= 0 {
 		pollInterval = 10 * time.Minute
 	}
@@ -41,15 +41,15 @@ func NewTickTickService(client *Client, repository *db.TickTickRepository, apiRo
 	return &TickTickService{
 		client:       client,
 		repository:   repository,
+		oauth:        oauth,
 		apiRoot:      strings.TrimSpace(apiRoot),
-		accessToken:  strings.TrimSpace(accessToken),
 		projectID:    strings.TrimSpace(projectID),
 		pollInterval: pollInterval,
 	}
 }
 
 func (s *TickTickService) Enabled() bool {
-	return s.client != nil && s.repository != nil && s.apiRoot != "" && s.accessToken != "" && s.projectID != ""
+	return s.client != nil && s.repository != nil && s.oauth != nil && s.apiRoot != "" && s.projectID != ""
 }
 
 func (s *TickTickService) Start(ctx context.Context) {
@@ -79,13 +79,18 @@ func (s *TickTickService) SyncOnce(ctx context.Context) error {
 
 	requestURL := fmt.Sprintf("%s/project/%s/data", strings.TrimRight(s.apiRoot, "/"), url.PathEscape(s.projectID))
 
+	accessToken, err := s.oauth.ResolveAccessToken(ctx)
+	if err != nil {
+		return err
+	}
+
 	response, err := s.client.Do(ctx, Request{
 		Service: "ticktick",
 		Method:  http.MethodGet,
 		URL:     requestURL,
 		Headers: map[string]string{
 			"Accept":        "application/json",
-			"Authorization": "Bearer " + s.accessToken,
+			"Authorization": "Bearer " + accessToken,
 		},
 	})
 	if err != nil {

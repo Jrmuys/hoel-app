@@ -18,13 +18,18 @@
 | `PGHST_ENDPOINT` | Yes* | _(empty)_ | PGH.st endpoint to poll (`/api/daily-operations` remains empty until set) |
 | `PGHST_POLL_INTERVAL` | No | `12h` | Polling interval for PGH.st sync |
 | `TICKTICK_API_ROOT` | No | `https://api.ticktick.com/open/v1` | TickTick Open API base URL |
-| `TICKTICK_ACCESS_TOKEN` | Yes** | _(empty)_ | TickTick access token for backend polling |
+| `TICKTICK_AUTH_URL` | No | `https://ticktick.com/oauth/authorize` | TickTick OAuth authorize URL |
+| `TICKTICK_TOKEN_URL` | No | `https://ticktick.com/oauth/token` | TickTick OAuth token URL |
+| `TICKTICK_CLIENT_ID` | Yes** | _(empty)_ | TickTick OAuth app client ID |
+| `TICKTICK_CLIENT_SECRET` | Yes** | _(empty)_ | TickTick OAuth app client secret |
+| `TICKTICK_REDIRECT_URI` | Yes** | _(empty)_ | OAuth callback URL handled by backend |
+| `TICKTICK_ACCESS_TOKEN` | Optional | _(empty)_ | Optional manual access token fallback (skips OAuth flow) |
 | `TICKTICK_PROJECT_ID` | Yes** | _(empty)_ | TickTick project/list ID to poll |
 | `TICKTICK_POLL_INTERVAL` | No | `10m` | Polling interval for TickTick sync |
 
 \* Required to enable PGH polling.
 
-\** Required to enable TickTick polling.
+\** Required to enable TickTick OAuth flow and polling.
 
 ## Frontend
 
@@ -34,5 +39,4 @@
 
 ## Upcoming Integrations (Next Slices)
 
-- TickTick OAuth: `TICKTICK_CLIENT_ID`, `TICKTICK_CLIENT_SECRET`, `TICKTICK_REDIRECT_URI`
 - Telegram alerts: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`

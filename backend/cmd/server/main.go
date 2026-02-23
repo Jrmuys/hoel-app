@@ -39,18 +39,29 @@ func main() {
 	monitoringRepository := db.NewMonitoringRepository(database)
 	pghRepository := db.NewPGHRepository(database)
 	tickTickRepository := db.NewTickTickRepository(database)
+	tickTickOAuthRepository := db.NewTickTickOAuthRepository(database)
 	integrationClient := integration.NewClient(
 		cfg.OutboundTimeout,
 		cfg.OutboundRetries,
 		cfg.OutboundBackoff,
 		monitoringRepository,
 	)
+	tickTickOAuth := integration.NewTickTickOAuthService(
+		integrationClient,
+		tickTickOAuthRepository,
+		cfg.TickTickAuthURL,
+		cfg.TickTickTokenURL,
+		cfg.TickTickClientID,
+		cfg.TickTickClientSecret,
+		cfg.TickTickRedirectURI,
+		cfg.TickTickToken,
+	)
 	pghService := integration.NewPGHService(integrationClient, pghRepository, cfg.PGHEndpoint, cfg.PGHPollInterval)
 	tickTickService := integration.NewTickTickService(
 		integrationClient,
 		tickTickRepository,
+		tickTickOAuth,
 		cfg.TickTickAPIRoot,
-		cfg.TickTickToken,
 		cfg.TickTickProject,
 		cfg.TickTickPoll,
 	)
@@ -75,8 +86,8 @@ func main() {
 		pghRepository,
 		tickTickRepository,
 		integrationClient,
+		tickTickOAuth,
 		cfg.TickTickAPIRoot,
-		cfg.TickTickToken,
 	)
 	errChannel := make(chan error, 1)
 

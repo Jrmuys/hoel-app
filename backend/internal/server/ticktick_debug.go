@@ -35,9 +35,14 @@ func (s *Server) tickTickProjectsHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	token := strings.TrimSpace(s.tickTickToken)
-	if token == "" {
-		http.Error(w, "TICKTICK_ACCESS_TOKEN is not configured", http.StatusBadRequest)
+	if s.tickTickOAuth == nil {
+		http.Error(w, "ticktick oauth is unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	token, err := s.tickTickOAuth.ResolveAccessToken(r.Context())
+	if err != nil {
+		http.Error(w, "ticktick access token is unavailable", http.StatusBadRequest)
 		return
 	}
 

@@ -11,23 +11,28 @@ import (
 )
 
 type Config struct {
-	Host            string
-	Port            int
-	ReadTimeout     time.Duration
-	WriteTimeout    time.Duration
-	ShutdownTimeout time.Duration
-	SQLitePath      string
-	MigrationsDir   string
-	OutboundTimeout time.Duration
-	OutboundRetries int
-	OutboundBackoff time.Duration
-	PGHEndpoint     string
-	PGHPollInterval time.Duration
-	TickTickAPIRoot string
-	TickTickToken   string
-	TickTickProject string
-	TickTickPoll    time.Duration
-	AllowedOrigins  []string
+	Host                 string
+	Port                 int
+	ReadTimeout          time.Duration
+	WriteTimeout         time.Duration
+	ShutdownTimeout      time.Duration
+	SQLitePath           string
+	MigrationsDir        string
+	OutboundTimeout      time.Duration
+	OutboundRetries      int
+	OutboundBackoff      time.Duration
+	PGHEndpoint          string
+	PGHPollInterval      time.Duration
+	TickTickAPIRoot      string
+	TickTickAuthURL      string
+	TickTickTokenURL     string
+	TickTickClientID     string
+	TickTickClientSecret string
+	TickTickRedirectURI  string
+	TickTickToken        string
+	TickTickProject      string
+	TickTickPoll         time.Duration
+	AllowedOrigins       []string
 }
 
 func Load() (Config, error) {
@@ -89,22 +94,27 @@ func Load() (Config, error) {
 	}
 
 	return Config{
-		Host:            stringFromEnv("APP_HOST", "127.0.0.1"),
-		Port:            port,
-		ReadTimeout:     readTimeout,
-		WriteTimeout:    writeTimeout,
-		ShutdownTimeout: shutdownTimeout,
-		SQLitePath:      sqlitePath,
-		MigrationsDir:   migrationsDir,
-		OutboundTimeout: outboundTimeout,
-		OutboundRetries: outboundRetries,
-		OutboundBackoff: outboundBackoff,
-		PGHEndpoint:     stringFromEnv("PGHST_ENDPOINT", ""),
-		PGHPollInterval: pghPollInterval,
-		TickTickAPIRoot: stringFromEnv("TICKTICK_API_ROOT", "https://api.ticktick.com/open/v1"),
-		TickTickToken:   stringFromEnv("TICKTICK_ACCESS_TOKEN", ""),
-		TickTickProject: stringFromEnv("TICKTICK_PROJECT_ID", ""),
-		TickTickPoll:    tickTickPoll,
+		Host:                 stringFromEnv("APP_HOST", "127.0.0.1"),
+		Port:                 port,
+		ReadTimeout:          readTimeout,
+		WriteTimeout:         writeTimeout,
+		ShutdownTimeout:      shutdownTimeout,
+		SQLitePath:           sqlitePath,
+		MigrationsDir:        migrationsDir,
+		OutboundTimeout:      outboundTimeout,
+		OutboundRetries:      outboundRetries,
+		OutboundBackoff:      outboundBackoff,
+		PGHEndpoint:          stringFromEnv("PGHST_ENDPOINT", ""),
+		PGHPollInterval:      pghPollInterval,
+		TickTickAPIRoot:      stringFromEnv("TICKTICK_API_ROOT", "https://api.ticktick.com/open/v1"),
+		TickTickAuthURL:      stringFromEnv("TICKTICK_AUTH_URL", "https://ticktick.com/oauth/authorize"),
+		TickTickTokenURL:     stringFromEnv("TICKTICK_TOKEN_URL", "https://ticktick.com/oauth/token"),
+		TickTickClientID:     stringFromEnv("TICKTICK_CLIENT_ID", ""),
+		TickTickClientSecret: stringFromEnv("TICKTICK_CLIENT_SECRET", ""),
+		TickTickRedirectURI:  stringFromEnv("TICKTICK_REDIRECT_URI", ""),
+		TickTickToken:        stringFromEnv("TICKTICK_ACCESS_TOKEN", ""),
+		TickTickProject:      stringFromEnv("TICKTICK_PROJECT_ID", ""),
+		TickTickPoll:         tickTickPoll,
 		AllowedOrigins: listFromEnv(
 			"APP_ALLOWED_ORIGINS",
 			[]string{"http://localhost:5173", "http://127.0.0.1:5173"},

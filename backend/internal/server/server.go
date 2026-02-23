@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"sync"
 	"time"
 
 	"hoel-app/backend/internal/db"
@@ -16,8 +17,10 @@ type Server struct {
 	pghRepository      *db.PGHRepository
 	tickTickRepository *db.TickTickRepository
 	integrationClient  *integration.Client
+	tickTickOAuth      *integration.TickTickOAuthService
 	tickTickAPIRoot    string
-	tickTickToken      string
+	tickTickStateStore map[string]time.Time
+	tickTickStateLock  sync.Mutex
 }
 
 type healthResponse struct {
@@ -25,19 +28,22 @@ type healthResponse struct {
 	Timestamp string `json:"timestamp"`
 }
 
-func New(address string, readTimeout, writeTimeout time.Duration, allowedOrigins []string, monitoring *db.MonitoringRepository, pghRepository *db.PGHRepository, tickTickRepository *db.TickTickRepository, integrationClient *integration.Client, tickTickAPIRoot, tickTickToken string) *Server {
+func New(address string, readTimeout, writeTimeout time.Duration, allowedOrigins []string, monitoring *db.MonitoringRepository, pghRepository *db.PGHRepository, tickTickRepository *db.TickTickRepository, integrationClient *integration.Client, tickTickOAuth *integration.TickTickOAuthService, tickTickAPIRoot string) *Server {
 	mux := http.NewServeMux()
 	server := &Server{
 		monitoring:         monitoring,
 		pghRepository:      pghRepository,
 		tickTickRepository: tickTickRepository,
 		integrationClient:  integrationClient,
+		tickTickOAuth:      tickTickOAuth,
 		tickTickAPIRoot:    tickTickAPIRoot,
-		tickTickToken:      tickTickToken,
+		tickTickStateStore: map[string]time.Time{},
 	}
 	mux.HandleFunc("/api/health", healthHandler)
 	mux.HandleFunc("/api/status-bar", server.statusBarHandler)
 	mux.HandleFunc("/api/daily-operations", server.dailyOperationsHandler)
+	mux.HandleFunc("/api/ticktick/oauth/start", server.tickTickOAuthStartHandler)
+	mux.HandleFunc("/api/ticktick/oauth/callback", server.tickTickOAuthCallbackHandler)
 	mux.HandleFunc("/api/debug/ticktick-projects", server.tickTickProjectsHandler)
 	handler := newCORSSettings(allowedOrigins).wrap(mux)
 
