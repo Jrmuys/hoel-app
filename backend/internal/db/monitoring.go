@@ -207,6 +207,41 @@ func (r *MonitoringRepository) ListRecentUnresolvedErrors(ctx context.Context, l
 	return errorsList, nil
 }
 
+func (r *MonitoringRepository) ClearUnresolvedAlerts(ctx context.Context) error {
+	transaction, err := r.database.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin clear alerts transaction: %w", err)
+	}
+
+	const resolveErrorsStatement = `
+	UPDATE api_errors
+	SET resolved = 1
+	WHERE resolved = 0;`
+
+	if _, err := transaction.ExecContext(ctx, resolveErrorsStatement); err != nil {
+		_ = transaction.Rollback()
+		return fmt.Errorf("resolve api errors: %w", err)
+	}
+
+	const resetFailuresStatement = `
+	UPDATE integration_status
+	SET consecutive_failures = 0,
+		last_error_at = NULL,
+		updated_at = CURRENT_TIMESTAMP
+	WHERE consecutive_failures != 0 OR last_error_at IS NOT NULL;`
+
+	if _, err := transaction.ExecContext(ctx, resetFailuresStatement); err != nil {
+		_ = transaction.Rollback()
+		return fmt.Errorf("reset integration failures: %w", err)
+	}
+
+	if err := transaction.Commit(); err != nil {
+		return fmt.Errorf("commit clear alerts transaction: %w", err)
+	}
+
+	return nil
+}
+
 func scanAPIError(row scanner) (APIError, error) {
 	var (
 		id           int64

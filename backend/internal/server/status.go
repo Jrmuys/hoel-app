@@ -90,6 +90,25 @@ func (s *Server) statusBarHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, payload)
 }
 
+func (s *Server) statusAlertsClearHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if s.monitoring == nil {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		return
+	}
+
+	if err := s.monitoring.ClearUnresolvedAlerts(r.Context()); err != nil {
+		http.Error(w, "unable to clear alerts", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
 func integrationState(consecutiveFailures int) string {
 	if consecutiveFailures >= 3 {
 		return "down"

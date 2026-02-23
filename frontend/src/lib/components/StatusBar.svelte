@@ -1,7 +1,21 @@
 <script lang="ts">
+    import { clearStatusAlerts, loadStatusBar } from '$lib/api/dashboard';
     import type { StatusBarModel } from '$lib/types/dashboard';
 
+    const EMPTY_STATUS: StatusBarModel = {
+        systemHealth: 'ok',
+        alerts: [],
+        integrations: [],
+    };
+
     let { data }: { data: StatusBarModel } = $props();
+    let viewData = $state<StatusBarModel>(EMPTY_STATUS);
+    let isClearingAlerts = $state(false);
+    let clearAlertsError = $state('');
+
+    $effect(() => {
+        viewData = data;
+    });
 
     function formatDate(dateIso: string | null): string {
         if (!dateIso) {
@@ -12,6 +26,27 @@
             hour: 'numeric',
             minute: '2-digit',
         });
+    }
+
+    async function handleClearAlerts() {
+        if (isClearingAlerts || viewData.alerts.length === 0) {
+            return;
+        }
+
+        isClearingAlerts = true;
+        clearAlertsError = '';
+
+        try {
+            await clearStatusAlerts();
+            viewData = await loadStatusBar();
+        } catch (error) {
+            clearAlertsError =
+                error instanceof Error
+                    ? error.message
+                    : 'Unable to clear status alerts right now.';
+        } finally {
+            isClearingAlerts = false;
+        }
     }
 </script>
 
@@ -26,13 +61,13 @@
         <span
             class="rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-primary)]"
         >
-            {data.systemHealth}
+            {viewData.systemHealth}
         </span>
     </header>
 
-    {#if data.integrations.length > 0}
+    {#if viewData.integrations.length > 0}
         <div class="mt-5 grid gap-3 sm:grid-cols-2">
-            {#each data.integrations as integration}
+            {#each viewData.integrations as integration}
                 <div
                     class="rounded-xl border border-[var(--color-secondary)]/18 bg-[var(--color-background)]/35 p-3 transition-colors duration-150 hover:bg-[var(--color-background)]/55"
                 >
@@ -64,9 +99,24 @@
         </p>
     {/if}
 
-    {#if data.alerts.length > 0}
-        <ul class="mt-5 space-y-2">
-            {#each data.alerts as alert}
+    {#if viewData.alerts.length > 0}
+        <div class="mt-5 flex items-center justify-between gap-2">
+            <p class="text-xs text-[var(--color-text)]/70">
+                {viewData.alerts.length} active alert{viewData.alerts.length === 1
+                    ? ''
+                    : 's'}
+            </p>
+            <button
+                type="button"
+                class="inline-flex h-8 items-center rounded-lg border border-[var(--color-secondary)]/40 px-3 text-xs"
+                onclick={handleClearAlerts}
+                disabled={isClearingAlerts}
+            >
+                {isClearingAlerts ? 'Clearing…' : 'Clear alerts'}
+            </button>
+        </div>
+        <ul class="mt-2 space-y-2">
+            {#each viewData.alerts as alert}
                 <li
                     class="rounded-lg border border-[var(--color-secondary)]/18 bg-[var(--color-background)]/35 px-3 py-2"
                     title={`${alert.source}: ${alert.message}`}
@@ -79,6 +129,12 @@
                 </li>
             {/each}
         </ul>
+
+        {#if clearAlertsError}
+            <p class="mt-3 text-sm text-[var(--color-error)]">
+                {clearAlertsError}
+            </p>
+        {/if}
     {:else}
         <p class="mt-5 text-sm text-[var(--color-text)]/70">
             No active alerts.

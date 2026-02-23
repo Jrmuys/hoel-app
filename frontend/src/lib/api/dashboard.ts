@@ -159,6 +159,21 @@ export async function forceRefreshTickTick(fetchFn: FetchFn = fetch): Promise<vo
     }
 }
 
+export async function clearStatusAlerts(fetchFn: FetchFn = fetch): Promise<void> {
+    const response = await fetchFn(`${apiBaseURL()}/api/status-bar/alerts/clear`, {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+        },
+    });
+
+    if (!response.ok) {
+        const responseText = await response.text();
+        const message = responseText.trim() || response.statusText;
+        throw new Error(`/api/status-bar/alerts/clear failed (${response.status}): ${message}`);
+    }
+}
+
 export async function completeTickTickTask(taskId: string, fetchFn: FetchFn = fetch): Promise<void> {
     const normalizedTaskId = taskId.trim();
     if (normalizedTaskId === '') {
