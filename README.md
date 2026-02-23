@@ -15,6 +15,13 @@ Household Operations Dashboard monorepo.
 - Node `22.12+`
 - npm `10+`
 
+Use the pinned Node version before frontend work:
+
+```sh
+fnm use 22.12.0
+# or: nvm use
+```
+
 ## MVP Scope (Phase 1)
 
 See `docs/mvp-scope.md` for committed MVP boundaries and deferred features.

@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -34,6 +35,12 @@ type tickTickTaskDTO struct {
 	DueDate  string `json:"dueDate"`
 	Status   int    `json:"status"`
 	Priority int    `json:"priority"`
+}
+
+type tickTickTaskUpsertRequest struct {
+	ProjectID string `json:"projectId,omitempty"`
+	Title     string `json:"title"`
+	DueDate   string `json:"dueDate,omitempty"`
 }
 
 func NewTickTickService(client *Client, repository *db.TickTickRepository, oauth *TickTickOAuthService, apiRoot, projectID string, pollInterval time.Duration) *TickTickService {
@@ -186,6 +193,7 @@ func (s *TickTickService) CompleteTask(ctx context.Context, taskID string) error
 	}
 
 	var lastError error
+	successfulEndpoint := ""
 	for _, requestURL := range requestURLs {
 		log.Printf("ticktick complete-task request: task=%s endpoint=%s", taskID, requestURL)
 
@@ -200,6 +208,7 @@ func (s *TickTickService) CompleteTask(ctx context.Context, taskID string) error
 		})
 		if err == nil {
 			lastError = nil
+			successfulEndpoint = requestURL
 			break
 		}
 
@@ -225,7 +234,142 @@ func (s *TickTickService) CompleteTask(ctx context.Context, taskID string) error
 		}
 	}
 
-	log.Printf("ticktick complete-task completed: task=%s", taskID)
+	log.Printf("ticktick complete-task completed: task=%s endpoint=%s", taskID, successfulEndpoint)
+	return nil
+}
+
+func (s *TickTickService) CreateTask(ctx context.Context, title string, dueAt time.Time) (string, error) {
+	if !s.Enabled() {
+		log.Printf("ticktick create-task skipped: service not enabled")
+		return "", fmt.Errorf("ticktick service is not enabled")
+	}
+
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return "", fmt.Errorf("task title is required")
+	}
+
+	accessToken, err := s.oauth.ResolveAccessToken(ctx)
+	if err != nil {
+		log.Printf("ticktick create-task token resolution failed: %v", err)
+		return "", err
+	}
+
+	bodyPayload := tickTickTaskUpsertRequest{
+		ProjectID: s.projectID,
+		Title:     title,
+		DueDate:   dueAt.UTC().Format(time.RFC3339),
+	}
+	body, err := json.Marshal(bodyPayload)
+	if err != nil {
+		return "", fmt.Errorf("marshal ticktick create task payload: %w", err)
+	}
+
+	requestURL := fmt.Sprintf("%s/task", strings.TrimRight(s.apiRoot, "/"))
+	log.Printf("ticktick create-task request: endpoint=%s project=%s", requestURL, s.projectID)
+
+	response, err := s.client.Do(ctx, Request{
+		Service: "ticktick",
+		Method:  http.MethodPost,
+		URL:     requestURL,
+		Body:    bytes.NewReader(body),
+		Headers: map[string]string{
+			"Accept":        "application/json",
+			"Authorization": "Bearer " + accessToken,
+			"Content-Type":  "application/json",
+		},
+	})
+	if err != nil {
+		log.Printf("ticktick create-task request failed: err=%v", err)
+		return "", err
+	}
+
+	var created tickTickTaskDTO
+	if err := json.Unmarshal(response.Body, &created); err != nil {
+		return "", fmt.Errorf("decode ticktick create task response: %w", err)
+	}
+
+	createdID := strings.TrimSpace(created.ID)
+	log.Printf("ticktick create-task completed: task=%s", createdID)
+
+	return createdID, nil
+}
+
+func (s *TickTickService) UpdateTask(ctx context.Context, taskID, title string, dueAt time.Time) error {
+	if !s.Enabled() {
+		log.Printf("ticktick update-task skipped: service not enabled")
+		return fmt.Errorf("ticktick service is not enabled")
+	}
+
+	taskID = strings.TrimSpace(taskID)
+	if taskID == "" {
+		return fmt.Errorf("task id is required")
+	}
+
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return fmt.Errorf("task title is required")
+	}
+
+	accessToken, err := s.oauth.ResolveAccessToken(ctx)
+	if err != nil {
+		log.Printf("ticktick update-task token resolution failed: %v", err)
+		return err
+	}
+
+	bodyPayload := tickTickTaskUpsertRequest{
+		Title:   title,
+		DueDate: dueAt.UTC().Format(time.RFC3339),
+	}
+	body, err := json.Marshal(bodyPayload)
+	if err != nil {
+		return fmt.Errorf("marshal ticktick update task payload: %w", err)
+	}
+
+	baseURL := strings.TrimRight(s.apiRoot, "/")
+	requestURLs := []string{
+		fmt.Sprintf("%s/task/%s", baseURL, url.PathEscape(taskID)),
+		fmt.Sprintf("%s/project/%s/task/%s", baseURL, url.PathEscape(s.projectID), url.PathEscape(taskID)),
+	}
+
+	var lastError error
+	successfulEndpoint := ""
+	for _, requestURL := range requestURLs {
+		log.Printf("ticktick update-task request: task=%s endpoint=%s", taskID, requestURL)
+
+		_, err = s.client.Do(ctx, Request{
+			Service: "ticktick",
+			Method:  http.MethodPost,
+			URL:     requestURL,
+			Body:    bytes.NewReader(body),
+			Headers: map[string]string{
+				"Accept":        "application/json",
+				"Authorization": "Bearer " + accessToken,
+				"Content-Type":  "application/json",
+			},
+		})
+		if err == nil {
+			successfulEndpoint = requestURL
+			lastError = nil
+			break
+		}
+
+		var statusError HTTPStatusError
+		if errors.As(err, &statusError) && statusError.StatusCode == http.StatusNotFound {
+			lastError = err
+			continue
+		}
+
+		log.Printf("ticktick update-task request failed: task=%s err=%v", taskID, err)
+		return err
+	}
+
+	if lastError != nil {
+		log.Printf("ticktick update-task request failed on all endpoints: task=%s err=%v", taskID, lastError)
+		return lastError
+	}
+
+	log.Printf("ticktick update-task completed: task=%s endpoint=%s", taskID, successfulEndpoint)
 	return nil
 }
 

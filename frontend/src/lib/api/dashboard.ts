@@ -133,6 +133,81 @@ export async function completeTickTickTask(taskId: string, fetchFn: FetchFn = fe
     }
 }
 
+export async function createTickTickTask(
+    title: string,
+    dueAt: string,
+    fetchFn: FetchFn = fetch,
+): Promise<void> {
+    const normalizedTitle = title.trim();
+    if (normalizedTitle === '') {
+        throw new Error('title is required');
+    }
+
+    const normalizedDueAt = dueAt.trim();
+    if (normalizedDueAt === '') {
+        throw new Error('dueAt is required');
+    }
+
+    const response = await fetchFn(`${apiBaseURL()}/api/ticktick/tasks/create`, {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            title: normalizedTitle,
+            dueAt: normalizedDueAt,
+        }),
+    });
+
+    if (!response.ok) {
+        const responseText = await response.text();
+        const message = responseText.trim() || response.statusText;
+        throw new Error(`/api/ticktick/tasks/create failed (${response.status}): ${message}`);
+    }
+}
+
+export async function updateTickTickTask(
+    taskId: string,
+    title: string,
+    dueAt: string,
+    fetchFn: FetchFn = fetch,
+): Promise<void> {
+    const normalizedTaskId = taskId.trim();
+    if (normalizedTaskId === '') {
+        throw new Error('taskId is required');
+    }
+
+    const normalizedTitle = title.trim();
+    if (normalizedTitle === '') {
+        throw new Error('title is required');
+    }
+
+    const normalizedDueAt = dueAt.trim();
+    if (normalizedDueAt === '') {
+        throw new Error('dueAt is required');
+    }
+
+    const response = await fetchFn(`${apiBaseURL()}/api/ticktick/tasks/update`, {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            taskId: normalizedTaskId,
+            title: normalizedTitle,
+            dueAt: normalizedDueAt,
+        }),
+    });
+
+    if (!response.ok) {
+        const responseText = await response.text();
+        const message = responseText.trim() || response.statusText;
+        throw new Error(`/api/ticktick/tasks/update failed (${response.status}): ${message}`);
+    }
+}
+
 function toStatusAlert(alert: RawStatusAlert): StatusAlert {
     return {
         id: String(alert.id ?? ''),

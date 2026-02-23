@@ -2,7 +2,9 @@
     import { Recycle, Trash2 } from 'lucide-svelte';
     import {
         completeTickTickTask,
+        createTickTickTask,
         loadDailyOperations,
+        updateTickTickTask,
     } from '$lib/api/dashboard';
     import type { DailyOperationsModel, DailyTask } from '$lib/types/dashboard';
 
@@ -24,6 +26,13 @@
     let viewData: DailyOperationsModel = EMPTY_DAILY_OPERATIONS;
     let completingTaskId = '';
     let completionError = '';
+    let mutatingTaskId = '';
+    let mutationError = '';
+    let newTaskTitle = '';
+    let newTaskDueAt = defaultDueAtInputValue();
+    let editingTaskId = '';
+    let editTaskTitle = '';
+    let editTaskDueAt = '';
 
     function cloneDailyOperations(
         source: DailyOperationsModel,
@@ -54,6 +63,41 @@
         return formatDate(dateIso);
     }
 
+    function defaultDueAtInputValue(): string {
+        const now = new Date();
+        now.setMinutes(0, 0, 0);
+        now.setHours(now.getHours() + 1);
+        return toLocalDateTimeInputValue(now.toISOString());
+    }
+
+    function toLocalDateTimeInputValue(dateIso: string): string {
+        if (!dateIso) {
+            return '';
+        }
+
+        const date = new Date(dateIso);
+        if (Number.isNaN(date.getTime())) {
+            return '';
+        }
+
+        const localTime = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+        return localTime.toISOString().slice(0, 16);
+    }
+
+    function toISOFromDateTimeInput(value: string): string {
+        const trimmed = value.trim();
+        if (trimmed === '') {
+            return '';
+        }
+
+        const localDate = new Date(trimmed);
+        if (Number.isNaN(localDate.getTime())) {
+            return '';
+        }
+
+        return localDate.toISOString();
+    }
+
     async function handleTaskCompletion(
         taskId: string,
         source: 'ticktick' | 'system',
@@ -63,6 +107,10 @@
         }
 
         if (completingTaskId !== '') {
+            return;
+        }
+
+        if (mutatingTaskId !== '') {
             return;
         }
 
@@ -85,6 +133,68 @@
             completionError = 'Unable to complete task right now.';
         } finally {
             completingTaskId = '';
+        }
+    }
+
+    async function handleCreateTask(): Promise<void> {
+        if (mutatingTaskId !== '') {
+            return;
+        }
+
+        mutationError = '';
+        const dueAtISO = toISOFromDateTimeInput(newTaskDueAt);
+        if (newTaskTitle.trim() === '' || dueAtISO === '') {
+            mutationError = 'Provide title and due date.';
+            return;
+        }
+
+        mutatingTaskId = 'create';
+        try {
+            await createTickTickTask(newTaskTitle, dueAtISO);
+            viewData = await loadDailyOperations();
+            newTaskTitle = '';
+            newTaskDueAt = defaultDueAtInputValue();
+        } catch {
+            mutationError = 'Unable to create task right now.';
+        } finally {
+            mutatingTaskId = '';
+        }
+    }
+
+    function startEditingTask(task: DailyTask): void {
+        editingTaskId = task.id;
+        editTaskTitle = task.title;
+        editTaskDueAt = toLocalDateTimeInputValue(task.dueAt);
+        mutationError = '';
+    }
+
+    function cancelEditingTask(): void {
+        editingTaskId = '';
+        editTaskTitle = '';
+        editTaskDueAt = '';
+    }
+
+    async function saveTaskEdit(taskID: string): Promise<void> {
+        if (mutatingTaskId !== '') {
+            return;
+        }
+
+        mutationError = '';
+        const dueAtISO = toISOFromDateTimeInput(editTaskDueAt);
+        if (editTaskTitle.trim() === '' || dueAtISO === '') {
+            mutationError = 'Provide title and due date before saving.';
+            return;
+        }
+
+        mutatingTaskId = taskID;
+        try {
+            await updateTickTickTask(taskID, editTaskTitle, dueAtISO);
+            viewData = await loadDailyOperations();
+            cancelEditingTask();
+        } catch {
+            mutationError = 'Unable to update task right now.';
+        } finally {
+            mutatingTaskId = '';
         }
     }
 </script>
@@ -153,6 +263,37 @@
         </div>
     </div>
 
+    <div
+        class="mt-5 rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 p-3"
+    >
+        <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70">
+            Add TickTick Task
+        </p>
+        <div class="mt-2 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+            <input
+                type="text"
+                class="rounded-lg border border-[var(--color-secondary)]/30 bg-transparent px-3 py-2 text-sm"
+                placeholder="Task title"
+                bind:value={newTaskTitle}
+                disabled={mutatingTaskId !== ''}
+            />
+            <input
+                type="datetime-local"
+                class="rounded-lg border border-[var(--color-secondary)]/30 bg-transparent px-3 py-2 text-sm"
+                bind:value={newTaskDueAt}
+                disabled={mutatingTaskId !== ''}
+            />
+            <button
+                type="button"
+                class="rounded-lg border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-3 py-2 text-sm font-medium text-[var(--color-primary)]"
+                onclick={handleCreateTask}
+                disabled={mutatingTaskId !== ''}
+            >
+                Add
+            </button>
+        </div>
+    </div>
+
     {#if viewData.tasks.length > 0}
         <ul class="mt-5 space-y-2.5">
             {#each viewData.tasks as task}
@@ -173,13 +314,57 @@
                             )}
                     />
                     <div class="min-w-0">
-                        <p class="truncate text-sm font-medium">
-                            {typedTask.title}
-                        </p>
-                        <p class="mt-0.5 text-xs text-[var(--color-text)]/70">
-                            Due {formatDate(typedTask.dueAt)}
-                        </p>
+                        {#if editingTaskId === typedTask.id}
+                            <div class="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
+                                <input
+                                    type="text"
+                                    class="rounded-lg border border-[var(--color-secondary)]/30 bg-transparent px-2.5 py-1.5 text-sm"
+                                    bind:value={editTaskTitle}
+                                    disabled={mutatingTaskId !== ''}
+                                />
+                                <input
+                                    type="datetime-local"
+                                    class="rounded-lg border border-[var(--color-secondary)]/30 bg-transparent px-2.5 py-1.5 text-xs"
+                                    bind:value={editTaskDueAt}
+                                    disabled={mutatingTaskId !== ''}
+                                />
+                                <button
+                                    type="button"
+                                    class="rounded-lg border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-2.5 py-1.5 text-xs font-medium text-[var(--color-primary)]"
+                                    onclick={() => saveTaskEdit(typedTask.id)}
+                                    disabled={mutatingTaskId !== ''}
+                                >
+                                    Save
+                                </button>
+                                <button
+                                    type="button"
+                                    class="rounded-lg border border-[var(--color-secondary)]/40 px-2.5 py-1.5 text-xs"
+                                    onclick={cancelEditingTask}
+                                    disabled={mutatingTaskId !== ''}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        {:else}
+                            <p class="truncate text-sm font-medium">
+                                {typedTask.title}
+                            </p>
+                            <p class="mt-0.5 text-xs text-[var(--color-text)]/70">
+                                Due {formatDate(typedTask.dueAt)}
+                            </p>
+                        {/if}
                     </div>
+
+                    {#if typedTask.source === 'ticktick' && editingTaskId !== typedTask.id}
+                        <button
+                            type="button"
+                            class="rounded-lg border border-[var(--color-secondary)]/40 px-2 py-1 text-xs"
+                            onclick={() => startEditingTask(typedTask)}
+                            disabled={mutatingTaskId !== '' || completingTaskId !== ''}
+                        >
+                            Edit
+                        </button>
+                    {/if}
                 </li>
             {/each}
         </ul>
@@ -188,11 +373,21 @@
                 {completionError}
             </p>
         {/if}
+        {#if mutationError}
+            <p class="mt-3 text-sm text-[var(--color-error)]">
+                {mutationError}
+            </p>
+        {/if}
     {:else}
         <p
             class="mt-5 rounded-xl border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 p-3 text-sm text-[var(--color-text)]/70"
         >
             No daily tasks available yet.
         </p>
+        {#if mutationError}
+            <p class="mt-3 text-sm text-[var(--color-error)]">
+                {mutationError}
+            </p>
+        {/if}
     {/if}
 </section>
