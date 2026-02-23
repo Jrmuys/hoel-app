@@ -1,0 +1,37 @@
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: ../backend
+    working_dir: /app
+    command: ["go", "run", "./cmd/server"]
+    ports:
+      - "8080:8080"
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8080
+      SQLITE_PATH: /data/hoel.db
+      MIGRATIONS_DIR: /app/migrations
+    volumes:
+      - ../backend:/app
+      - backend_data:/data
+
+  frontend:
+    build:
+      context: ../frontend
+    working_dir: /app
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+    ports:
+      - "5173:5173"
+    environment:
+      PUBLIC_API_BASE_URL: http://backend:8080
+    volumes:
+      - ../frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  backend_data:
+  frontend_node_modules:
