@@ -25,7 +25,7 @@ export interface DailyTask {
     title: string;
     dueAt: string;
     completed: boolean;
-    source: 'ticktick';
+    source: 'ticktick' | 'system';
 }
 
 export interface GarbageWindow {

@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { Recycle, Trash2 } from 'lucide-svelte';
     import type { DailyOperationsModel } from '$lib/types/dashboard';
 
     let { data }: { data: DailyOperationsModel } = $props();
@@ -33,22 +34,7 @@
                 <span
                     class="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--color-primary)]"
                 >
-                    <svg
-                        aria-hidden="true"
-                        viewBox="0 0 24 24"
-                        class="h-3.5 w-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-                        <path d="M3 6h18" />
-                        <path d="M8 6V4h8v2" />
-                        <path d="M19 6l-1 14H6L5 6" />
-                        <path d="M10 11v6" />
-                        <path d="M14 11v6" />
-                    </svg>
+                    <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
                     Take out trash tonight
                 </span>
             {/if}
@@ -56,25 +42,7 @@
                 <span
                     class="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--color-primary)]"
                 >
-                    <svg
-                        aria-hidden="true"
-                        viewBox="0 0 24 24"
-                        class="h-3.5 w-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-                        <path d="M7 7h4l2-3" />
-                        <path d="M17 7l-2-3h-1" />
-                        <path d="M17 7l2 3-2 3" />
-                        <path d="M7 7l-2 3" />
-                        <path d="M5 10h4" />
-                        <path d="M9 10l2 3-2 3" />
-                        <path d="M11 16h4" />
-                        <path d="M15 16l2-3" />
-                    </svg>
+                    <Recycle size={14} strokeWidth={2} aria-hidden="true" />
                     Take out recycling tonight
                 </span>
             {/if}
@@ -95,22 +63,7 @@
             <p
                 class="inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70"
             >
-                <svg
-                    aria-hidden="true"
-                    viewBox="0 0 24 24"
-                    class="h-3.5 w-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                >
-                    <path d="M3 6h18" />
-                    <path d="M8 6V4h8v2" />
-                    <path d="M19 6l-1 14H6L5 6" />
-                    <path d="M10 11v6" />
-                    <path d="M14 11v6" />
-                </svg>
+                <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
                 Next Trash
             </p>
             <p class="mt-1 text-sm font-semibold">
@@ -123,25 +76,7 @@
             <p
                 class="inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70"
             >
-                <svg
-                    aria-hidden="true"
-                    viewBox="0 0 24 24"
-                    class="h-3.5 w-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                >
-                    <path d="M7 7h4l2-3" />
-                    <path d="M17 7l-2-3h-1" />
-                    <path d="M17 7l2 3-2 3" />
-                    <path d="M7 7l-2 3" />
-                    <path d="M5 10h4" />
-                    <path d="M9 10l2 3-2 3" />
-                    <path d="M11 16h4" />
-                    <path d="M15 16l2-3" />
-                </svg>
+                <Recycle size={14} strokeWidth={2} aria-hidden="true" />
                 Next Recycling
             </p>
             <p class="mt-1 text-sm font-semibold">

@@ -96,7 +96,7 @@ export async function loadDailyOperations(fetchFn: FetchFn = fetch): Promise<Dai
             title: task.title ?? 'Untitled task',
             dueAt: task.dueAt ?? new Date().toISOString(),
             completed: Boolean(task.completed),
-            source: 'ticktick',
+            source: toTaskSource(task.source),
         })),
         garbage: {
             nextPickupDate: payload.garbage?.nextPickupDate ?? '',
@@ -167,4 +167,12 @@ function toIntegrationState(value: string | undefined): IntegrationHealth['state
     }
 
     return 'healthy';
+}
+
+function toTaskSource(value: string | undefined): DailyOperationsModel['tasks'][number]['source'] {
+    if (value === 'system') {
+        return 'system';
+    }
+
+    return 'ticktick';
 }

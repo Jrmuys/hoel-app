@@ -55,10 +55,28 @@ func (s *Server) dailyOperationsHandler(w http.ResponseWriter, r *http.Request) 
 			payload.Garbage.NextTrashPickupDate = schedule.NextPickupDate.UTC().Format(time.RFC3339)
 			payload.Garbage.IsRecyclingWeek = schedule.IsRecyclingWeek
 			payload.Garbage.ShowTrashTakeOutReminder = isWithinNextDay(now, schedule.NextPickupDate)
+			if payload.Garbage.ShowTrashTakeOutReminder {
+				payload.Tasks = append(payload.Tasks, dailyTaskResponse{
+					ID:        "system-trash-takeout",
+					Title:     "Take out trash tonight",
+					DueAt:     schedule.NextPickupDate.UTC().Format(time.RFC3339),
+					Completed: false,
+					Source:    "system",
+				})
+			}
 
 			if schedule.NextRecyclingDate != nil {
 				payload.Garbage.NextRecyclingPickupDate = schedule.NextRecyclingDate.UTC().Format(time.RFC3339)
 				payload.Garbage.ShowRecyclingTakeOutReminder = isWithinNextDay(now, *schedule.NextRecyclingDate)
+				if payload.Garbage.ShowRecyclingTakeOutReminder {
+					payload.Tasks = append(payload.Tasks, dailyTaskResponse{
+						ID:        "system-recycling-takeout",
+						Title:     "Take out recycling tonight",
+						DueAt:     schedule.NextRecyclingDate.UTC().Format(time.RFC3339),
+						Completed: false,
+						Source:    "system",
+					})
+				}
 			}
 
 			payload.Garbage.ShowIndicator = payload.Garbage.ShowTrashTakeOutReminder || payload.Garbage.ShowRecyclingTakeOutReminder || schedule.ShowIndicator
