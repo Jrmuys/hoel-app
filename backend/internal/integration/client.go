@@ -62,10 +62,10 @@ func NewClient(timeout time.Duration, retryCount int, retryBackoff time.Duration
 	}
 
 	return &Client{
-		httpClient: &http.Client{Timeout: timeout},
-		monitoring: monitoring,
-		retryCount: retryCount,
-		retryBackoff: retryBackoff,
+		httpClient:    &http.Client{Timeout: timeout},
+		monitoring:    monitoring,
+		retryCount:    retryCount,
+		retryBackoff:  retryBackoff,
 		requestTimout: timeout,
 	}
 }

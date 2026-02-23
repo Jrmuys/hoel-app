@@ -22,16 +22,17 @@ type healthResponse struct {
 	Timestamp string `json:"timestamp"`
 }
 
-func New(address string, readTimeout, writeTimeout time.Duration, monitoring *db.MonitoringRepository, pghRepository *db.PGHRepository, integrationClient *integration.Client) *Server {
+func New(address string, readTimeout, writeTimeout time.Duration, allowedOrigins []string, monitoring *db.MonitoringRepository, pghRepository *db.PGHRepository, integrationClient *integration.Client) *Server {
 	mux := http.NewServeMux()
 	server := &Server{monitoring: monitoring, pghRepository: pghRepository, integrationClient: integrationClient}
 	mux.HandleFunc("/api/health", healthHandler)
 	mux.HandleFunc("/api/status-bar", server.statusBarHandler)
 	mux.HandleFunc("/api/daily-operations", server.dailyOperationsHandler)
+	handler := newCORSSettings(allowedOrigins).wrap(mux)
 
 	server.httpServer = &http.Server{
 		Addr:         address,
-		Handler:      mux,
+		Handler:      handler,
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
 	}

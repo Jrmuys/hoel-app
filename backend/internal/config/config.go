@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -20,6 +21,7 @@ type Config struct {
 	OutboundBackoff time.Duration
 	PGHEndpoint     string
 	PGHPollInterval time.Duration
+	AllowedOrigins  []string
 }
 
 func Load() (Config, error) {
@@ -86,6 +88,10 @@ func Load() (Config, error) {
 		OutboundBackoff: outboundBackoff,
 		PGHEndpoint:     stringFromEnv("PGHST_ENDPOINT", ""),
 		PGHPollInterval: pghPollInterval,
+		AllowedOrigins: listFromEnv(
+			"APP_ALLOWED_ORIGINS",
+			[]string{"http://localhost:5173", "http://127.0.0.1:5173"},
+		),
 	}, nil
 }
 
@@ -128,4 +134,26 @@ func durationFromEnv(key string, fallback time.Duration) (time.Duration, error) 
 	}
 
 	return parsed, nil
+}
+
+func listFromEnv(key string, fallback []string) []string {
+	value := os.Getenv(key)
+	if strings.TrimSpace(value) == "" {
+		return append([]string{}, fallback...)
+	}
+
+	segments := strings.Split(value, ",")
+	values := make([]string, 0, len(segments))
+	for _, segment := range segments {
+		trimmed := strings.TrimSpace(segment)
+		if trimmed != "" {
+			values = append(values, trimmed)
+		}
+	}
+
+	if len(values) == 0 {
+		return append([]string{}, fallback...)
+	}
+
+	return values
 }

@@ -53,7 +53,15 @@ func main() {
 		go pghService.Start(runtimeContext)
 	}
 
-	apiServer := server.New(cfg.Address(), cfg.ReadTimeout, cfg.WriteTimeout, monitoringRepository, pghRepository, integrationClient)
+	apiServer := server.New(
+		cfg.Address(),
+		cfg.ReadTimeout,
+		cfg.WriteTimeout,
+		cfg.AllowedOrigins,
+		monitoringRepository,
+		pghRepository,
+		integrationClient,
+	)
 	errChannel := make(chan error, 1)
 
 	go func() {
