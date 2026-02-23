@@ -145,6 +145,20 @@
         return dayDifferenceFromToday(parsed) < 0;
     }
 
+    function isPickupSoon(dateIso: string): boolean {
+        if (dateIso.trim() === '') {
+            return false;
+        }
+
+        const parsed = new Date(dateIso);
+        if (Number.isNaN(parsed.getTime())) {
+            return false;
+        }
+
+        const dayDifference = dayDifferenceFromToday(parsed);
+        return dayDifference >= 0 && dayDifference <= 1;
+    }
+
     function formatDate(
         dateIso: string,
         options: { includeTimeForToday?: boolean; hasTime?: boolean } = {},
@@ -568,7 +582,7 @@
                 {isRefreshing ? 'Refreshing…' : 'Force Refresh'}
             </button>
             <div class="flex flex-wrap gap-2 sm:justify-end">
-                {#if viewData.garbage.showTrashTakeOutReminder}
+                {#if isPickupSoon(viewData.garbage.nextTrashPickupDate)}
                     <span
                         class="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--color-primary)]"
                     >
@@ -576,7 +590,7 @@
                         Take out trash tonight
                     </span>
                 {/if}
-                {#if viewData.garbage.showRecyclingTakeOutReminder}
+                {#if isPickupSoon(viewData.garbage.nextRecyclingPickupDate)}
                     <span
                         class="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--color-primary)]"
                     >
@@ -584,7 +598,7 @@
                         Take out recycling tonight
                     </span>
                 {/if}
-                {#if !viewData.garbage.showTrashTakeOutReminder && !viewData.garbage.showRecyclingTakeOutReminder}
+                {#if !isPickupSoon(viewData.garbage.nextTrashPickupDate) && !isPickupSoon(viewData.garbage.nextRecyclingPickupDate)}
                     <span
                         class="rounded-full border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 px-3 py-1 text-xs font-medium text-[var(--color-text)]/70"
                     >
@@ -955,39 +969,57 @@
                             <div
                                 class="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-0.5"
                             >
-                                <p
-                                    class="truncate text-sm font-medium leading-tight"
-                                >
-                                    {typedTask.title}
-                                </p>
-                                <span
-                                    class="text-xs text-[var(--color-text)]/70"
-                                >
-                                    •
-                                </span>
-                                <span
-                                    class={`text-xs ${isTaskOverdue(typedTask) ? 'text-[var(--color-error)]' : 'text-[var(--color-text)]/70'}`}
-                                >
-                                    Due {formatDate(typedTask.dueAt, {
-                                        includeTimeForToday: true,
-                                        hasTime: typedTask.hasTime,
-                                    })}
-                                </span>
+                                {#if typedTask.source === 'ticktick'}
+                                    <button
+                                        type="button"
+                                        class="flex min-h-8 min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 rounded-md px-1 text-left"
+                                        onclick={() =>
+                                            startEditingTask(typedTask)}
+                                        disabled={mutatingTaskId !== '' ||
+                                            completingTaskId !== ''}
+                                    >
+                                        <span
+                                            class="truncate text-sm font-medium leading-tight"
+                                        >
+                                            {typedTask.title}
+                                        </span>
+                                        <span
+                                            class="text-xs text-[var(--color-text)]/70"
+                                        >
+                                            •
+                                        </span>
+                                        <span
+                                            class={`text-xs ${isTaskOverdue(typedTask) ? 'text-[var(--color-error)]' : 'text-[var(--color-text)]/70'}`}
+                                        >
+                                            Due {formatDate(typedTask.dueAt, {
+                                                includeTimeForToday: true,
+                                                hasTime: typedTask.hasTime,
+                                            })}
+                                        </span>
+                                    </button>
+                                {:else}
+                                    <p
+                                        class="truncate text-sm font-medium leading-tight"
+                                    >
+                                        {typedTask.title}
+                                    </p>
+                                    <span
+                                        class="text-xs text-[var(--color-text)]/70"
+                                    >
+                                        •
+                                    </span>
+                                    <span
+                                        class={`text-xs ${isTaskOverdue(typedTask) ? 'text-[var(--color-error)]' : 'text-[var(--color-text)]/70'}`}
+                                    >
+                                        Due {formatDate(typedTask.dueAt, {
+                                            includeTimeForToday: true,
+                                            hasTime: typedTask.hasTime,
+                                        })}
+                                    </span>
+                                {/if}
                             </div>
                         {/if}
                     </div>
-
-                    {#if typedTask.source === 'ticktick' && editingTaskId !== typedTask.id}
-                        <button
-                            type="button"
-                            class="inline-flex h-8 shrink-0 items-center rounded-lg border border-[var(--color-secondary)]/40 px-2.5 text-xs font-medium"
-                            onclick={() => startEditingTask(typedTask)}
-                            disabled={mutatingTaskId !== '' ||
-                                completingTaskId !== ''}
-                        >
-                            Edit
-                        </button>
-                    {/if}
                 </li>
             {/each}
         </ul>

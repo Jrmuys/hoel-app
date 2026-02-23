@@ -139,6 +139,12 @@ func tickTickTaskHasTag(tags []string, expected string) bool {
 }
 
 func isWithinNextDay(now, scheduledAt time.Time) bool {
-	delta := scheduledAt.UTC().Sub(now.UTC())
-	return delta >= 0 && delta <= 24*time.Hour
+	nowUTC := now.UTC()
+	scheduledUTC := scheduledAt.UTC()
+
+	nowDay := time.Date(nowUTC.Year(), nowUTC.Month(), nowUTC.Day(), 0, 0, 0, 0, time.UTC)
+	scheduledDay := time.Date(scheduledUTC.Year(), scheduledUTC.Month(), scheduledUTC.Day(), 0, 0, 0, 0, time.UTC)
+
+	dayDelta := int(scheduledDay.Sub(nowDay) / (24 * time.Hour))
+	return dayDelta >= 0 && dayDelta <= 1
 }

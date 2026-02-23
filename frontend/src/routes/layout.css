@@ -55,7 +55,6 @@ select {
     user-select: none;
     -webkit-user-select: none;
     transition:
-        transform 140ms ease,
         border-color 160ms ease,
         background-color 160ms ease,
         color 160ms ease,
@@ -75,12 +74,6 @@ input[type='time'],
 input[type='date'],
 textarea {
     cursor: text;
-}
-
-button:not(:disabled):hover,
-[role='button']:not([aria-disabled='true']):hover,
-select:not(:disabled):hover {
-    transform: translateY(-1px);
 }
 
 svg,
@@ -106,14 +99,12 @@ svg {
     transition:
         border-color 180ms ease,
         box-shadow 220ms ease,
-        transform 180ms ease,
         background-color 180ms ease;
 }
 
 .panel:hover {
     border-color: color-mix(in srgb, var(--color-secondary) 46%, transparent);
     box-shadow: 0 10px 24px -16px color-mix(in srgb, black 30%, transparent);
-    transform: translateY(-1px);
 }
 
 @media (min-width: 640px) {
@@ -128,12 +119,5 @@ svg {
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
-    }
-
-    .panel:hover,
-    button:not(:disabled):hover,
-    [role='button']:not([aria-disabled='true']):hover,
-    select:not(:disabled):hover {
-        transform: none;
     }
 }

@@ -11,12 +11,7 @@
     class="app-shell mx-auto grid min-h-screen w-full max-w-6xl gap-6 p-4 sm:p-8"
 >
     <section class="panel">
-        <p
-            class="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-secondary)]"
-        >
-            Household Operations
-        </p>
-        <div class="mt-2 flex flex-wrap items-end justify-between gap-3">
+        <div class="flex flex-wrap items-end justify-between gap-3">
             <h1 class="text-3xl font-semibold text-[var(--color-primary)]">
                 Dashboard
             </h1>
