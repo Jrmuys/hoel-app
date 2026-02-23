@@ -14,6 +14,7 @@ type Server struct {
 	httpServer        *http.Server
 	monitoring        *db.MonitoringRepository
 	pghRepository     *db.PGHRepository
+	tickTickRepository *db.TickTickRepository
 	integrationClient *integration.Client
 }
 
@@ -22,9 +23,9 @@ type healthResponse struct {
 	Timestamp string `json:"timestamp"`
 }
 
-func New(address string, readTimeout, writeTimeout time.Duration, allowedOrigins []string, monitoring *db.MonitoringRepository, pghRepository *db.PGHRepository, integrationClient *integration.Client) *Server {
+func New(address string, readTimeout, writeTimeout time.Duration, allowedOrigins []string, monitoring *db.MonitoringRepository, pghRepository *db.PGHRepository, tickTickRepository *db.TickTickRepository, integrationClient *integration.Client) *Server {
 	mux := http.NewServeMux()
-	server := &Server{monitoring: monitoring, pghRepository: pghRepository, integrationClient: integrationClient}
+	server := &Server{monitoring: monitoring, pghRepository: pghRepository, tickTickRepository: tickTickRepository, integrationClient: integrationClient}
 	mux.HandleFunc("/api/health", healthHandler)
 	mux.HandleFunc("/api/status-bar", server.statusBarHandler)
 	mux.HandleFunc("/api/daily-operations", server.dailyOperationsHandler)

@@ -38,6 +38,7 @@ func main() {
 
 	monitoringRepository := db.NewMonitoringRepository(database)
 	pghRepository := db.NewPGHRepository(database)
+	tickTickRepository := db.NewTickTickRepository(database)
 	integrationClient := integration.NewClient(
 		cfg.OutboundTimeout,
 		cfg.OutboundRetries,
@@ -45,12 +46,24 @@ func main() {
 		monitoringRepository,
 	)
 	pghService := integration.NewPGHService(integrationClient, pghRepository, cfg.PGHEndpoint, cfg.PGHPollInterval)
+	tickTickService := integration.NewTickTickService(
+		integrationClient,
+		tickTickRepository,
+		cfg.TickTickAPIRoot,
+		cfg.TickTickToken,
+		cfg.TickTickProject,
+		cfg.TickTickPoll,
+	)
 
 	runtimeContext, runtimeCancel := context.WithCancel(context.Background())
 	defer runtimeCancel()
 
 	if pghService.Enabled() {
 		go pghService.Start(runtimeContext)
+	}
+
+	if tickTickService.Enabled() {
+		go tickTickService.Start(runtimeContext)
 	}
 
 	apiServer := server.New(
@@ -60,6 +73,7 @@ func main() {
 		cfg.AllowedOrigins,
 		monitoringRepository,
 		pghRepository,
+		tickTickRepository,
 		integrationClient,
 	)
 	errChannel := make(chan error, 1)

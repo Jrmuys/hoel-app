@@ -17,8 +17,14 @@
 | `OUTBOUND_RETRY_BACKOFF` | No | `300ms` | Backoff between outbound retries |
 | `PGHST_ENDPOINT` | Yes* | _(empty)_ | PGH.st endpoint to poll (`/api/daily-operations` remains empty until set) |
 | `PGHST_POLL_INTERVAL` | No | `12h` | Polling interval for PGH.st sync |
+| `TICKTICK_API_ROOT` | No | `https://api.ticktick.com/open/v1` | TickTick Open API base URL |
+| `TICKTICK_ACCESS_TOKEN` | Yes** | _(empty)_ | TickTick access token for backend polling |
+| `TICKTICK_PROJECT_ID` | Yes** | _(empty)_ | TickTick project/list ID to poll |
+| `TICKTICK_POLL_INTERVAL` | No | `10m` | Polling interval for TickTick sync |
 
 \* Required to enable PGH polling.
+
+\** Required to enable TickTick polling.
 
 ## Frontend
 

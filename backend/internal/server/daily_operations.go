@@ -29,6 +29,8 @@ type garbageResponse struct {
 }
 
 func (s *Server) dailyOperationsHandler(w http.ResponseWriter, r *http.Request) {
+	now := time.Now().UTC()
+
 	payload := dailyOperationsResponse{
 		Tasks: []dailyTaskResponse{},
 		Garbage: garbageResponse{
@@ -42,6 +44,24 @@ func (s *Server) dailyOperationsHandler(w http.ResponseWriter, r *http.Request) 
 		},
 	}
 
+	if s.tickTickRepository != nil {
+		tasks, err := s.tickTickRepository.ListTasksDueBetween(r.Context(), now, now.Add(24*time.Hour))
+		if err != nil {
+			http.Error(w, "unable to load daily operations", http.StatusInternalServerError)
+			return
+		}
+
+		for _, task := range tasks {
+			payload.Tasks = append(payload.Tasks, dailyTaskResponse{
+				ID:        task.ID,
+				Title:     task.Title,
+				DueAt:     task.DueAt.UTC().Format(time.RFC3339),
+				Completed: task.Completed,
+				Source:    "ticktick",
+			})
+		}
+	}
+
 	if s.pghRepository != nil {
 		schedule, err := s.pghRepository.GetLatestSchedule(r.Context())
 		if err != nil {
@@ -50,7 +70,6 @@ func (s *Server) dailyOperationsHandler(w http.ResponseWriter, r *http.Request) 
 		}
 
 		if schedule != nil {
-			now := time.Now().UTC()
 			payload.Garbage.NextPickupDate = schedule.NextPickupDate.UTC().Format(time.RFC3339)
 			payload.Garbage.NextTrashPickupDate = schedule.NextPickupDate.UTC().Format(time.RFC3339)
 			payload.Garbage.IsRecyclingWeek = schedule.IsRecyclingWeek

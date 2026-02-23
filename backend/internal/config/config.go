@@ -23,6 +23,10 @@ type Config struct {
 	OutboundBackoff time.Duration
 	PGHEndpoint     string
 	PGHPollInterval time.Duration
+	TickTickAPIRoot string
+	TickTickToken   string
+	TickTickProject string
+	TickTickPoll    time.Duration
 	AllowedOrigins  []string
 }
 
@@ -69,6 +73,11 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
+	tickTickPoll, err := durationFromEnv("TICKTICK_POLL_INTERVAL", 10*time.Minute)
+	if err != nil {
+		return Config{}, err
+	}
+
 	sqlitePath := stringFromEnv("SQLITE_PATH", "./hoel.db")
 	if sqlitePath == "" {
 		return Config{}, fmt.Errorf("SQLITE_PATH cannot be empty")
@@ -92,6 +101,10 @@ func Load() (Config, error) {
 		OutboundBackoff: outboundBackoff,
 		PGHEndpoint:     stringFromEnv("PGHST_ENDPOINT", ""),
 		PGHPollInterval: pghPollInterval,
+		TickTickAPIRoot: stringFromEnv("TICKTICK_API_ROOT", "https://api.ticktick.com/open/v1"),
+		TickTickToken:   stringFromEnv("TICKTICK_ACCESS_TOKEN", ""),
+		TickTickProject: stringFromEnv("TICKTICK_PROJECT_ID", ""),
+		TickTickPoll:    tickTickPoll,
 		AllowedOrigins: listFromEnv(
 			"APP_ALLOWED_ORIGINS",
 			[]string{"http://localhost:5173", "http://127.0.0.1:5173"},
