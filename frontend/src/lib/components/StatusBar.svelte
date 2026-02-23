@@ -102,7 +102,8 @@
     {#if viewData.alerts.length > 0}
         <div class="mt-5 flex items-center justify-between gap-2">
             <p class="text-xs text-[var(--color-text)]/70">
-                {viewData.alerts.length} active alert{viewData.alerts.length === 1
+                {viewData.alerts.length} active alert{viewData.alerts.length ===
+                1
                     ? ''
                     : 's'}
             </p>

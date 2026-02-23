@@ -17,7 +17,9 @@
                 Dashboard
             </h1>
             <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-                <p class="text-sm text-[var(--color-text)]/70">{data.todayLabel}</p>
+                <p class="text-sm text-[var(--color-text)]/70">
+                    {data.todayLabel}
+                </p>
                 {#await data.statusPromise}
                     <div
                         class="inline-flex h-9 items-center rounded-lg border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 px-3 text-xs text-[var(--color-text)]/70"
@@ -33,12 +35,14 @@
                         >
                             Status
                         </span>
-                        <span class="text-xs font-medium text-[var(--color-text)]/80">
+                        <span
+                            class="text-xs font-medium text-[var(--color-text)]/80"
+                        >
                             {status.systemHealth}
                         </span>
                         <span class="text-xs text-[var(--color-text)]/65">
-                            • {status.alerts.length} alert{status.alerts.length ===
-                            1
+                            • {status.alerts.length} alert{status.alerts
+                                .length === 1
                                 ? ''
                                 : 's'}
                         </span>
