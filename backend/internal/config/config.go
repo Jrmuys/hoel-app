@@ -15,6 +15,9 @@ type Config struct {
 	ShutdownTimeout time.Duration
 	SQLitePath      string
 	MigrationsDir   string
+	OutboundTimeout time.Duration
+	OutboundRetries int
+	OutboundBackoff time.Duration
 }
 
 func Load() (Config, error) {
@@ -38,6 +41,21 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
+	outboundTimeout, err := durationFromEnv("OUTBOUND_HTTP_TIMEOUT", 8*time.Second)
+	if err != nil {
+		return Config{}, err
+	}
+
+	outboundRetries, err := intFromEnv("OUTBOUND_RETRY_COUNT", 2)
+	if err != nil {
+		return Config{}, err
+	}
+
+	outboundBackoff, err := durationFromEnv("OUTBOUND_RETRY_BACKOFF", 300*time.Millisecond)
+	if err != nil {
+		return Config{}, err
+	}
+
 	sqlitePath := stringFromEnv("SQLITE_PATH", "./hoel.db")
 	if sqlitePath == "" {
 		return Config{}, fmt.Errorf("SQLITE_PATH cannot be empty")
@@ -56,6 +74,9 @@ func Load() (Config, error) {
 		ShutdownTimeout: shutdownTimeout,
 		SQLitePath:      sqlitePath,
 		MigrationsDir:   migrationsDir,
+		OutboundTimeout: outboundTimeout,
+		OutboundRetries: outboundRetries,
+		OutboundBackoff: outboundBackoff,
 	}, nil
 }
 

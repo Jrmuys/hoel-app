@@ -12,6 +12,7 @@ import (
 
 	"hoel-app/backend/internal/config"
 	"hoel-app/backend/internal/db"
+	"hoel-app/backend/internal/integration"
 	"hoel-app/backend/internal/server"
 )
 
@@ -36,7 +37,13 @@ func main() {
 	}
 
 	monitoringRepository := db.NewMonitoringRepository(database)
-	apiServer := server.New(cfg.Address(), cfg.ReadTimeout, cfg.WriteTimeout, monitoringRepository)
+	integrationClient := integration.NewClient(
+		cfg.OutboundTimeout,
+		cfg.OutboundRetries,
+		cfg.OutboundBackoff,
+		monitoringRepository,
+	)
+	apiServer := server.New(cfg.Address(), cfg.ReadTimeout, cfg.WriteTimeout, monitoringRepository, integrationClient)
 	errChannel := make(chan error, 1)
 
 	go func() {

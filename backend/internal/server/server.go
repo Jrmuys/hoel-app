@@ -7,11 +7,13 @@ import (
 	"time"
 
 	"hoel-app/backend/internal/db"
+	"hoel-app/backend/internal/integration"
 )
 
 type Server struct {
-	httpServer *http.Server
-	monitoring *db.MonitoringRepository
+	httpServer        *http.Server
+	monitoring        *db.MonitoringRepository
+	integrationClient *integration.Client
 }
 
 type healthResponse struct {
@@ -19,9 +21,9 @@ type healthResponse struct {
 	Timestamp string `json:"timestamp"`
 }
 
-func New(address string, readTimeout, writeTimeout time.Duration, monitoring *db.MonitoringRepository) *Server {
+func New(address string, readTimeout, writeTimeout time.Duration, monitoring *db.MonitoringRepository, integrationClient *integration.Client) *Server {
 	mux := http.NewServeMux()
-	server := &Server{monitoring: monitoring}
+	server := &Server{monitoring: monitoring, integrationClient: integrationClient}
 	mux.HandleFunc("/api/health", healthHandler)
 	mux.HandleFunc("/api/status-bar", server.statusBarHandler)
 
