@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -70,6 +71,8 @@ func (s *TickTickOAuthService) BuildAuthorizeURL(state string) (string, error) {
 	query.Set("response_type", "code")
 	parsed.RawQuery = query.Encode()
 
+	log.Printf("ticktick oauth authorize url generated: redirect=%s", s.redirectURI)
+
 	return parsed.String(), nil
 }
 
@@ -77,6 +80,8 @@ func (s *TickTickOAuthService) ExchangeCode(ctx context.Context, code string) (*
 	if !s.OAuthEnabled() {
 		return nil, fmt.Errorf("ticktick oauth is not configured")
 	}
+
+	log.Printf("ticktick oauth code exchange started")
 
 	values := url.Values{}
 	values.Set("client_id", s.clientID)
@@ -96,23 +101,29 @@ func (s *TickTickOAuthService) ExchangeCode(ctx context.Context, code string) (*
 		},
 	})
 	if err != nil {
+		log.Printf("ticktick oauth code exchange request failed: %v", err)
 		return nil, err
 	}
 
 	token, err := decodeTickTickToken(response.Body)
 	if err != nil {
+		log.Printf("ticktick oauth code exchange decode failed: %v", err)
 		return nil, err
 	}
 
 	if err := s.repository.SaveToken(ctx, token); err != nil {
+		log.Printf("ticktick oauth token persistence failed: %v", err)
 		return nil, err
 	}
+
+	log.Printf("ticktick oauth code exchange completed: token_saved=true refresh_token=%t", strings.TrimSpace(token.RefreshToken) != "")
 
 	return &token, nil
 }
 
 func (s *TickTickOAuthService) ResolveAccessToken(ctx context.Context) (string, error) {
 	if s.staticToken != "" {
+		log.Printf("ticktick oauth token source: static env token")
 		return s.staticToken, nil
 	}
 
@@ -122,28 +133,38 @@ func (s *TickTickOAuthService) ResolveAccessToken(ctx context.Context) (string, 
 
 	stored, err := s.repository.GetToken(ctx)
 	if err != nil {
+		log.Printf("ticktick oauth load stored token failed: %v", err)
 		return "", err
 	}
 	if stored == nil || strings.TrimSpace(stored.AccessToken) == "" {
+		log.Printf("ticktick oauth token unavailable: no stored access token")
 		return "", fmt.Errorf("ticktick access token is not available")
 	}
 
 	if stored.ExpiresAt == nil || stored.ExpiresAt.After(time.Now().UTC().Add(60*time.Second)) {
+		log.Printf("ticktick oauth token source: stored token valid")
 		return stored.AccessToken, nil
 	}
 
 	if strings.TrimSpace(stored.RefreshToken) == "" {
+		log.Printf("ticktick oauth token expired and refresh token missing")
 		return "", fmt.Errorf("ticktick access token is expired and refresh token is missing")
 	}
 
+	log.Printf("ticktick oauth token refresh started")
+
 	refreshed, err := s.refreshAccessToken(ctx, stored.RefreshToken)
 	if err != nil {
+		log.Printf("ticktick oauth token refresh failed: %v", err)
 		return "", err
 	}
 
 	if err := s.repository.SaveToken(ctx, refreshed); err != nil {
+		log.Printf("ticktick oauth refreshed token persistence failed: %v", err)
 		return "", err
 	}
+
+	log.Printf("ticktick oauth token refresh completed")
 
 	return refreshed.AccessToken, nil
 }
@@ -170,6 +191,7 @@ func (s *TickTickOAuthService) refreshAccessToken(ctx context.Context, refreshTo
 		},
 	})
 	if err != nil {
+		log.Printf("ticktick oauth refresh request failed: %v", err)
 		return db.TickTickOAuthToken{}, err
 	}
 
