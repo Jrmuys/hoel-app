@@ -40,30 +40,36 @@
         </span>
     </header>
 
-    <div class="mt-5 grid gap-3 sm:grid-cols-2">
-        {#each data.integrations as integration}
-            <div
-                class="rounded-xl border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 p-3"
-            >
-                <div class="flex items-center justify-between gap-3">
-                    <p class="text-sm font-semibold capitalize">
-                        {integration.service}
+    {#if data.integrations.length > 0}
+        <div class="mt-5 grid gap-3 sm:grid-cols-2">
+            {#each data.integrations as integration}
+                <div
+                    class="rounded-xl border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 p-3"
+                >
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="text-sm font-semibold capitalize">
+                            {integration.service}
+                        </p>
+                        <span
+                            class="text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70"
+                        >
+                            {integration.state}
+                        </span>
+                    </div>
+                    <p class="mt-2 text-xs text-[var(--color-text)]/70">
+                        Last success: {formatDate(integration.lastSuccessAt)}
                     </p>
-                    <span
-                        class="text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70"
-                    >
-                        {integration.state}
-                    </span>
+                    <p class="mt-1 text-xs text-[var(--color-text)]/70">
+                        Consecutive failures: {integration.consecutiveFailures}
+                    </p>
                 </div>
-                <p class="mt-2 text-xs text-[var(--color-text)]/70">
-                    Last success: {formatDate(integration.lastSuccessAt)}
-                </p>
-                <p class="mt-1 text-xs text-[var(--color-text)]/70">
-                    Consecutive failures: {integration.consecutiveFailures}
-                </p>
-            </div>
-        {/each}
-    </div>
+            {/each}
+        </div>
+    {:else}
+        <p class="mt-5 rounded-xl border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 p-3 text-sm text-[var(--color-text)]/70">
+            No integration telemetry yet. Start the backend integrations to populate status.
+        </p>
+    {/if}
 
     {#if data.alerts.length > 0}
         <ul class="mt-5 flex flex-wrap gap-2">
@@ -75,5 +81,7 @@
                 </li>
             {/each}
         </ul>
+    {:else}
+        <p class="mt-5 text-sm text-[var(--color-text)]/70">No active alerts.</p>
     {/if}
 </section>

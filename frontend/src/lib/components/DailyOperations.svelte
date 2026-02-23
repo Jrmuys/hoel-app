@@ -28,27 +28,37 @@
                     data.garbage.nextPickupDate,
                 )}
             </span>
+        {:else}
+            <span class="rounded-full border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 px-3 py-1 text-xs font-medium text-[var(--color-text)]/70">
+                No pickup scheduled in the next 24 hours
+            </span>
         {/if}
     </header>
 
-    <ul class="mt-5 space-y-2.5">
-        {#each data.tasks as task}
-            <li
-                class="flex items-center gap-3 rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 px-3 py-2.5"
-            >
-                <input
-                    type="checkbox"
-                    checked={task.completed}
-                    class="h-4 w-4 rounded border-[var(--color-secondary)] text-[var(--color-primary)] accent-[var(--color-primary)]"
-                    disabled
-                />
-                <div class="min-w-0">
-                    <p class="truncate text-sm font-medium">{task.title}</p>
-                    <p class="mt-0.5 text-xs text-[var(--color-text)]/70">
-                        Due {formatDate(task.dueAt)}
-                    </p>
-                </div>
-            </li>
-        {/each}
-    </ul>
+    {#if data.tasks.length > 0}
+        <ul class="mt-5 space-y-2.5">
+            {#each data.tasks as task}
+                <li
+                    class="flex items-center gap-3 rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 px-3 py-2.5"
+                >
+                    <input
+                        type="checkbox"
+                        checked={task.completed}
+                        class="h-4 w-4 rounded border-[var(--color-secondary)] text-[var(--color-primary)] accent-[var(--color-primary)]"
+                        disabled
+                    />
+                    <div class="min-w-0">
+                        <p class="truncate text-sm font-medium">{task.title}</p>
+                        <p class="mt-0.5 text-xs text-[var(--color-text)]/70">
+                            Due {formatDate(task.dueAt)}
+                        </p>
+                    </div>
+                </li>
+            {/each}
+        </ul>
+    {:else}
+        <p class="mt-5 rounded-xl border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 p-3 text-sm text-[var(--color-text)]/70">
+            No daily tasks available yet.
+        </p>
+    {/if}
 </section>
