@@ -66,8 +66,11 @@
             {/each}
         </div>
     {:else}
-        <p class="mt-5 rounded-xl border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 p-3 text-sm text-[var(--color-text)]/70">
-            No integration telemetry yet. Start the backend integrations to populate status.
+        <p
+            class="mt-5 rounded-xl border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 p-3 text-sm text-[var(--color-text)]/70"
+        >
+            No integration telemetry yet. Start the backend integrations to
+            populate status.
         </p>
     {/if}
 
@@ -82,6 +85,8 @@
             {/each}
         </ul>
     {:else}
-        <p class="mt-5 text-sm text-[var(--color-text)]/70">No active alerts.</p>
+        <p class="mt-5 text-sm text-[var(--color-text)]/70">
+            No active alerts.
+        </p>
     {/if}
 </section>

@@ -54,13 +54,29 @@
     </header>
 
     <div class="mt-5 grid gap-2 sm:grid-cols-2">
-        <div class="rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 p-3">
-            <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70">Next Trash</p>
-            <p class="mt-1 text-sm font-semibold">{formatOptionalDate(data.garbage.nextTrashPickupDate)}</p>
+        <div
+            class="rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 p-3"
+        >
+            <p
+                class="text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70"
+            >
+                Next Trash
+            </p>
+            <p class="mt-1 text-sm font-semibold">
+                {formatOptionalDate(data.garbage.nextTrashPickupDate)}
+            </p>
         </div>
-        <div class="rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 p-3">
-            <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70">Next Recycling</p>
-            <p class="mt-1 text-sm font-semibold">{formatOptionalDate(data.garbage.nextRecyclingPickupDate)}</p>
+        <div
+            class="rounded-xl border border-[var(--color-secondary)]/25 bg-[var(--color-background)]/35 p-3"
+        >
+            <p
+                class="text-xs font-medium uppercase tracking-wide text-[var(--color-text)]/70"
+            >
+                Next Recycling
+            </p>
+            <p class="mt-1 text-sm font-semibold">
+                {formatOptionalDate(data.garbage.nextRecyclingPickupDate)}
+            </p>
         </div>
     </div>
 

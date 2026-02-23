@@ -19,13 +19,13 @@ type dailyTaskResponse struct {
 }
 
 type garbageResponse struct {
-	NextPickupDate             string `json:"nextPickupDate"`
-	NextTrashPickupDate        string `json:"nextTrashPickupDate"`
-	NextRecyclingPickupDate    string `json:"nextRecyclingPickupDate"`
-	IsRecyclingWeek            bool   `json:"isRecyclingWeek"`
-	ShowIndicator              bool   `json:"showIndicator"`
-	ShowTrashTakeOutReminder   bool   `json:"showTrashTakeOutReminder"`
-	ShowRecyclingTakeOutReminder bool `json:"showRecyclingTakeOutReminder"`
+	NextPickupDate               string `json:"nextPickupDate"`
+	NextTrashPickupDate          string `json:"nextTrashPickupDate"`
+	NextRecyclingPickupDate      string `json:"nextRecyclingPickupDate"`
+	IsRecyclingWeek              bool   `json:"isRecyclingWeek"`
+	ShowIndicator                bool   `json:"showIndicator"`
+	ShowTrashTakeOutReminder     bool   `json:"showTrashTakeOutReminder"`
+	ShowRecyclingTakeOutReminder bool   `json:"showRecyclingTakeOutReminder"`
 }
 
 func (s *Server) dailyOperationsHandler(w http.ResponseWriter, r *http.Request) {
