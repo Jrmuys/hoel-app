@@ -106,6 +106,8 @@ func (s *Server) statusAlertsClearHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	s.publishEvent("refresh")
+
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 

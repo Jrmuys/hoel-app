@@ -40,6 +40,8 @@ func (s *Server) tickTickSyncNowHandler(w http.ResponseWriter, r *http.Request) 
 		dueTaskCount = len(tasks)
 	}
 
+	s.publishEvent("refresh")
+
 	writeJSON(w, http.StatusOK, tickTickSyncNowResponse{
 		Status:        "ok",
 		SyncedAt:      now.Format(time.RFC3339),

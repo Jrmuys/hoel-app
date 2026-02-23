@@ -1,11 +1,142 @@
 <script lang="ts">
+    import { browser } from '$app/environment';
+    import {
+        eventsURL,
+        loadDailyOperations,
+        loadLogisticsPlanning,
+        loadStatusBar,
+    } from '$lib/api/dashboard';
+    import type {
+        DailyOperationsModel,
+        LogisticsPlanningModel,
+        StatusBarModel,
+    } from '$lib/types/dashboard';
     import DailyOperations from '$lib/components/DailyOperations.svelte';
     import LogisticsPlanning from '$lib/components/LogisticsPlanning.svelte';
     import StatusBar from '$lib/components/StatusBar.svelte';
+    import { onMount } from 'svelte';
     import type { PageData } from './$types';
+
+    const fallbackStatus: StatusBarModel = {
+        systemHealth: 'down',
+        alerts: [
+            {
+                id: 'backend-unavailable',
+                source: 'system',
+                level: 'critical',
+                message:
+                    'Backend is unavailable. Showing cached interface state only.',
+            },
+        ],
+        integrations: [],
+    };
+
+    const fallbackDailyOperations: DailyOperationsModel = {
+        tasks: [],
+        garbage: {
+            nextPickupDate: '',
+            nextTrashPickupDate: '',
+            nextRecyclingPickupDate: '',
+            isRecyclingWeek: false,
+            showIndicator: false,
+            showTrashTakeOutReminder: false,
+            showRecyclingTakeOutReminder: false,
+        },
+    };
+
+    const fallbackLogisticsPlanning: LogisticsPlanningModel = {
+        shoppingTasks: [],
+        maintenanceTasks: [],
+    };
 
     let { data }: { data: PageData } = $props();
     let showStatus = $state(false);
+    let statusPromise = $state<Promise<StatusBarModel>>(
+        Promise.resolve(fallbackStatus),
+    );
+    let dailyPromise = $state<Promise<DailyOperationsModel>>(
+        Promise.resolve(fallbackDailyOperations),
+    );
+    let logisticsPromise = $state<Promise<LogisticsPlanningModel>>(
+        Promise.resolve(fallbackLogisticsPlanning),
+    );
+    let refreshQueued = false;
+    let refreshInFlight = false;
+
+    $effect(() => {
+        statusPromise = data.statusPromise;
+        dailyPromise = data.dailyPromise;
+        logisticsPromise = data.logisticsPromise;
+    });
+
+    function queueRefreshFromEvent() {
+        if (refreshInFlight) {
+            refreshQueued = true;
+            return;
+        }
+
+        refreshInFlight = true;
+        statusPromise = loadStatusBar().catch(() => fallbackStatus);
+        dailyPromise = loadDailyOperations().catch(
+            () => fallbackDailyOperations,
+        );
+        logisticsPromise = loadLogisticsPlanning().catch(
+            () => fallbackLogisticsPlanning,
+        );
+
+        Promise.allSettled([
+            statusPromise,
+            dailyPromise,
+            logisticsPromise,
+        ]).finally(() => {
+            refreshInFlight = false;
+            if (refreshQueued) {
+                refreshQueued = false;
+                queueRefreshFromEvent();
+            }
+        });
+    }
+
+    onMount(() => {
+        if (!browser || typeof EventSource === 'undefined') {
+            return;
+        }
+
+        let closed = false;
+        let source: EventSource | null = null;
+        let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+        const connect = () => {
+            if (closed) {
+                return;
+            }
+
+            source = new EventSource(eventsURL());
+
+            source.addEventListener('refresh', () => {
+                queueRefreshFromEvent();
+            });
+
+            source.onerror = () => {
+                source?.close();
+                source = null;
+
+                if (!closed) {
+                    reconnectTimer = setTimeout(connect, 3000);
+                }
+            };
+        };
+
+        connect();
+
+        return () => {
+            closed = true;
+            source?.close();
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+            }
+        };
+    });
 </script>
 
 <main
@@ -20,7 +151,7 @@
                 <p class="text-sm text-[var(--color-text)]/70">
                     {data.todayLabel}
                 </p>
-                {#await data.statusPromise}
+                {#await statusPromise}
                     <div
                         class="inline-flex h-9 items-center rounded-lg border border-[var(--color-secondary)]/30 bg-[var(--color-background)]/35 px-3 text-xs text-[var(--color-text)]/70"
                     >
@@ -67,7 +198,7 @@
     </section>
 
     {#if showStatus}
-        {#await data.statusPromise}
+        {#await statusPromise}
             <section class="panel text-sm text-[var(--color-text)]/70">
                 Loading status...
             </section>
@@ -82,7 +213,7 @@
         {/await}
     {/if}
 
-    {#await data.dailyPromise}
+    {#await dailyPromise}
         <section class="panel text-sm text-[var(--color-text)]/70">
             Loading daily operations...
         </section>
@@ -96,7 +227,7 @@
         </section>
     {/await}
 
-    {#await data.logisticsPromise}
+    {#await logisticsPromise}
         <section class="panel text-sm text-[var(--color-text)]/70">
             Loading logistics &amp; planning...
         </section>

@@ -19,6 +19,10 @@ function apiBaseURL(): string {
     return configured.trim().replace(/\/$/, '');
 }
 
+export function eventsURL(): string {
+    return `${apiBaseURL()}/api/events`;
+}
+
 async function fetchJSON<T>(path: string, fetchFn: FetchFn): Promise<T> {
     const response = await fetchFn(`${apiBaseURL()}${path}`, {
         headers: {

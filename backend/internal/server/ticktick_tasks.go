@@ -91,6 +91,8 @@ func (s *Server) tickTickCompleteTaskHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	s.publishEvent("refresh")
+
 	writeJSON(w, http.StatusOK, tickTickCompleteTaskResponse{
 		Status:   "ok",
 		TaskID:   taskID,
@@ -137,6 +139,8 @@ func (s *Server) tickTickCreateTaskHandler(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "task created but sync refresh failed", http.StatusBadGateway)
 		return
 	}
+
+	s.publishEvent("refresh")
 
 	writeJSON(w, http.StatusOK, tickTickCreateTaskResponse{
 		Status:   "ok",
@@ -189,6 +193,8 @@ func (s *Server) tickTickUpdateTaskHandler(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "task updated but sync refresh failed", http.StatusBadGateway)
 		return
 	}
+
+	s.publishEvent("refresh")
 
 	writeJSON(w, http.StatusOK, tickTickUpdateTaskResponse{
 		Status:   "ok",

@@ -26,6 +26,8 @@ type Server struct {
 	tickTickMaintenanceTag  string
 	tickTickStateStore      map[string]time.Time
 	tickTickStateLock       sync.Mutex
+	eventSubscribers        map[chan string]struct{}
+	eventSubscribersLock    sync.RWMutex
 }
 
 type healthResponse struct {
@@ -47,10 +49,12 @@ func New(address string, readTimeout, writeTimeout time.Duration, allowedOrigins
 		tickTickDailyTag:        normalizeTickTickTag(tickTickDailyTag),
 		tickTickMaintenanceTag:  normalizeTickTickTag(tickTickMaintenanceTag),
 		tickTickStateStore:      map[string]time.Time{},
+		eventSubscribers:        map[chan string]struct{}{},
 	}
 	mux.HandleFunc("/api/health", healthHandler)
 	mux.HandleFunc("/api/status-bar", server.statusBarHandler)
 	mux.HandleFunc("/api/status-bar/alerts/clear", server.statusAlertsClearHandler)
+	mux.HandleFunc("/api/events", server.eventsHandler)
 	mux.HandleFunc("/api/daily-operations", server.dailyOperationsHandler)
 	mux.HandleFunc("/api/logistics-planning", server.logisticsPlanningHandler)
 	mux.HandleFunc("/api/ticktick/oauth/start", server.tickTickOAuthStartHandler)
