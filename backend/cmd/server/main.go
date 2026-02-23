@@ -35,7 +35,8 @@ func main() {
 		log.Fatalf("failed to apply migrations: %v", err)
 	}
 
-	apiServer := server.New(cfg.Address(), cfg.ReadTimeout, cfg.WriteTimeout)
+	monitoringRepository := db.NewMonitoringRepository(database)
+	apiServer := server.New(cfg.Address(), cfg.ReadTimeout, cfg.WriteTimeout, monitoringRepository)
 	errChannel := make(chan error, 1)
 
 	go func() {

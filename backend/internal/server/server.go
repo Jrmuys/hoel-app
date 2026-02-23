@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+
+	"hoel-app/backend/internal/db"
 )
 
 type Server struct {
-	httpServer *http.Server
+	httpServer  *http.Server
+	monitoring *db.MonitoringRepository
 }
 
 type healthResponse struct {
@@ -16,18 +19,20 @@ type healthResponse struct {
 	Timestamp string `json:"timestamp"`
 }
 
-func New(address string, readTimeout, writeTimeout time.Duration) *Server {
+func New(address string, readTimeout, writeTimeout time.Duration, monitoring *db.MonitoringRepository) *Server {
 	mux := http.NewServeMux()
+	server := &Server{monitoring: monitoring}
 	mux.HandleFunc("/api/health", healthHandler)
+	mux.HandleFunc("/api/status-bar", server.statusBarHandler)
 
-	return &Server{
-		httpServer: &http.Server{
-			Addr:         address,
-			Handler:      mux,
-			ReadTimeout:  readTimeout,
-			WriteTimeout: writeTimeout,
-		},
+	server.httpServer = &http.Server{
+		Addr:         address,
+		Handler:      mux,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
 	}
+
+	return server
 }
 
 func (s *Server) ListenAndServe() error {
