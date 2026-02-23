@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -102,12 +103,132 @@ func (s *PGHService) SyncOnce(ctx context.Context) error {
 }
 
 func parsePGHPayload(body []byte) (pghPayload, error) {
-	var payload pghPayload
-	if err := json.Unmarshal(body, &payload); err != nil {
-		return pghPayload{}, fmt.Errorf("decode pgh payload: %w", err)
+	var decoded any
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		preview := truncateBodyPreview(body, 220)
+		return pghPayload{}, fmt.Errorf("decode pgh payload: %w (body=%q)", err, preview)
+	}
+
+	payload, ok := extractPGHPayload(decoded)
+	if !ok {
+		preview := truncateBodyPreview(body, 220)
+		return pghPayload{}, fmt.Errorf("unsupported pgh payload shape: no usable pickup date fields found (body=%q)", preview)
 	}
 
 	return payload, nil
+}
+
+func extractPGHPayload(value any) (pghPayload, bool) {
+	switch typed := value.(type) {
+	case map[string]any:
+		if payload, ok := payloadFromMap(typed); ok {
+			return payload, true
+		}
+
+		for _, nested := range typed {
+			if payload, ok := extractPGHPayload(nested); ok {
+				return payload, true
+			}
+		}
+
+		return pghPayload{}, false
+	case []any:
+		for _, item := range typed {
+			if payload, ok := extractPGHPayload(item); ok {
+				return payload, true
+			}
+		}
+
+		return pghPayload{}, false
+	default:
+		return pghPayload{}, false
+	}
+}
+
+func payloadFromMap(source map[string]any) (pghPayload, bool) {
+	values := map[string]string{}
+	for key, rawValue := range source {
+		normalizedKey := normalizeKey(key)
+		if normalizedKey == "" {
+			continue
+		}
+
+		text, ok := stringifyValue(rawValue)
+		if !ok || strings.TrimSpace(text) == "" {
+			continue
+		}
+
+		if _, exists := values[normalizedKey]; !exists {
+			values[normalizedKey] = strings.TrimSpace(text)
+		}
+	}
+
+	payload := pghPayload{
+		NextPickupDate:    firstMatch(values, "nextpickupdate", "nextcollectiondate", "nextcollection"),
+		NextRecyclingDate: firstMatch(values, "nextrecyclingdate"),
+		PickupDate:        firstMatch(values, "pickupdate", "collectiondate"),
+		RecyclingDate:     firstMatch(values, "recyclingdate"),
+		CollectionType:    firstMatch(values, "collectiontype", "type"),
+		UpdatedAt:         firstMatch(values, "updatedat", "lastupdated", "modifiedat"),
+	}
+
+	if strings.TrimSpace(payload.NextPickupDate) == "" && strings.TrimSpace(payload.PickupDate) == "" {
+		return pghPayload{}, false
+	}
+
+	return payload, true
+}
+
+func firstMatch(values map[string]string, keys ...string) string {
+	for _, key := range keys {
+		if value, ok := values[key]; ok {
+			return value
+		}
+	}
+
+	return ""
+}
+
+func normalizeKey(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return ""
+	}
+
+	replacer := strings.NewReplacer("_", "", "-", "", " ", "")
+	return strings.ToLower(replacer.Replace(trimmed))
+}
+
+func stringifyValue(value any) (string, bool) {
+	switch typed := value.(type) {
+	case string:
+		return typed, true
+	case float64:
+		if typed == float64(int64(typed)) {
+			return strconv.FormatInt(int64(typed), 10), true
+		}
+		return strconv.FormatFloat(typed, 'f', -1, 64), true
+	case bool:
+		if typed {
+			return "true", true
+		}
+		return "false", true
+	default:
+		return "", false
+	}
+}
+
+func truncateBodyPreview(body []byte, maxLength int) string {
+	preview := strings.TrimSpace(string(body))
+	if len(preview) <= maxLength {
+		return preview
+	}
+
+	if maxLength <= 3 {
+		return preview[:maxLength]
+	}
+
+	return preview[:maxLength-3] + "..."
 }
 
 func (s *PGHService) toSchedule(payload pghPayload) (db.PGHSchedule, error) {

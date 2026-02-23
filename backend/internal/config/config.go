@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -25,6 +27,8 @@ type Config struct {
 }
 
 func Load() (Config, error) {
+	_ = godotenv.Load(".env")
+
 	port, err := intFromEnv("APP_PORT", 8080)
 	if err != nil {
 		return Config{}, err
